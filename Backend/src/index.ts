@@ -75,5 +75,5 @@ server.listen(port, () => {
         "See the \"Known gap\" section in README.md before real production traffic."
     );
   }
-  console.log(`DECIDE backend listening on :${port}`);
+  console.log(`RUDDER backend listening on :${port}`);
 });

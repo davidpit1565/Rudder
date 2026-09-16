@@ -11,4 +11,4 @@ SWIFT_ACTIVE_COMPILATION_CONDITIONS =
 
 // Production backend (Vercel). Host only — Shared.xcconfig's $(HTTPS) macro
 // supplies the "https://" scheme, so no scheme/protocol prefix goes here.
-DECIDE_API_HOST = decide-mu-navy.vercel.app
+RUDDER_API_HOST = decide-mu-navy.vercel.app

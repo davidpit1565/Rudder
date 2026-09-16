@@ -1,7 +1,7 @@
-// Shared build settings for the DECIDE app target.
+// Shared build settings for the RUDDER app target.
 //
-PRODUCT_NAME = Decide
-PRODUCT_BUNDLE_IDENTIFIER = com.decide.app
+PRODUCT_NAME = Rudder
+PRODUCT_BUNDLE_IDENTIFIER = com.rudder.app
 MARKETING_VERSION = 1.0.0
 CURRENT_PROJECT_VERSION = 1
 
@@ -19,7 +19,7 @@ CODE_SIGN_STYLE = Automatic
 // --- Backend and legal URLs --------------------------------------------------
 // TODO(release): fill these in. They are deliberately empty rather than pointing
 // at a plausible-looking host: the app treats an empty or non-HTTPS value as
-// absent, so an unconfigured build says "DECIDE isn't connected yet" and hides
+// absent, so an unconfigured build says "RUDDER isn't connected yet" and hides
 // the legal links, instead of failing against a domain that does not exist or
 // linking to a page that was never published.
 //
@@ -27,12 +27,12 @@ CODE_SIGN_STYLE = Automatic
 // scheme is assembled below.
 HTTPS = https:/$()/
 
-DECIDE_API_HOST =
-DECIDE_API_BASE_URL = $(HTTPS)$(DECIDE_API_HOST)
+RUDDER_API_HOST =
+RUDDER_API_BASE_URL = $(HTTPS)$(RUDDER_API_HOST)
 
-DECIDE_PRIVACY_POLICY_HOST =
-DECIDE_PRIVACY_POLICY_URL = $(HTTPS)$(DECIDE_PRIVACY_POLICY_HOST)
-DECIDE_TERMS_HOST =
-DECIDE_TERMS_URL = $(HTTPS)$(DECIDE_TERMS_HOST)
-DECIDE_SUPPORT_HOST =
-DECIDE_SUPPORT_URL = $(HTTPS)$(DECIDE_SUPPORT_HOST)
+RUDDER_PRIVACY_POLICY_HOST =
+RUDDER_PRIVACY_POLICY_URL = $(HTTPS)$(RUDDER_PRIVACY_POLICY_HOST)
+RUDDER_TERMS_HOST =
+RUDDER_TERMS_URL = $(HTTPS)$(RUDDER_TERMS_HOST)
+RUDDER_SUPPORT_HOST =
+RUDDER_SUPPORT_URL = $(HTTPS)$(RUDDER_SUPPORT_HOST)

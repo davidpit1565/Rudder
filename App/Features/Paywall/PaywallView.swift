@@ -1,9 +1,9 @@
 import SwiftUI
 import Foundation
-import DecideFlow
+import RudderFlow
 import StoreKit
 
-/// Shown only after DECIDE has already been useful. No countdowns, no invented
+/// Shown only after RUDDER has already been useful. No countdowns, no invented
 /// scarcity, no "1,000 AI messages" — the product is decision intelligence.
 struct PaywallView: View {
     enum Context: String, Identifiable {
@@ -45,7 +45,7 @@ struct PaywallView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: DecideSpacing.l) {
+                VStack(alignment: .leading, spacing: RudderSpacing.l) {
                     header
                     benefits
                     plans
@@ -55,10 +55,10 @@ struct PaywallView: View {
                     legal
                 }
                 .screenPadding()
-                .padding(.vertical, DecideSpacing.m)
+                .padding(.vertical, RudderSpacing.m)
             }
-            .background(DecideColor.background)
-            .navigationTitle("DECIDE Pro")
+            .background(RudderColor.background)
+            .navigationTitle("RUDDER Pro")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -66,7 +66,7 @@ struct PaywallView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                VStack(spacing: DecideSpacing.s) {
+                VStack(spacing: RudderSpacing.s) {
                     PrimaryButton(
                         title: "Start Pro",
                         isLoading: isPurchasing,
@@ -75,11 +75,11 @@ struct PaywallView: View {
                         purchase()
                     }
                     Button("Restore Purchases") { restore() }
-                        .font(DecideFont.footnote)
-                        .frame(minHeight: DecideSpacing.minimumTouchTarget)
+                        .font(RudderFont.footnote)
+                        .frame(minHeight: RudderSpacing.minimumTouchTarget)
                 }
                 .screenPadding()
-                .padding(.vertical, DecideSpacing.s)
+                .padding(.vertical, RudderSpacing.s)
                 .background(.bar)
             }
             .task {
@@ -97,15 +97,15 @@ struct PaywallView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        VStack(alignment: .leading, spacing: RudderSpacing.s) {
             Text(context.headline)
-                .font(DecideFont.display)
-                .foregroundStyle(DecideColor.primaryText)
+                .font(RudderFont.display)
+                .foregroundStyle(RudderColor.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
             if let lead = context.lead {
                 Text(lead)
-                    .font(DecideFont.callout)
-                    .foregroundStyle(DecideColor.secondaryText)
+                    .font(RudderFont.callout)
+                    .foregroundStyle(RudderColor.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -115,14 +115,14 @@ struct PaywallView: View {
     /// Only what Pro actually changes. The analysis itself is the same either way,
     /// and saying so is worth more than a longer list.
     private var benefits: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.m) {
+        VStack(alignment: .leading, spacing: RudderSpacing.m) {
             benefit(
                 "Deep decisions, uncapped",
                 "Free covers \(FeatureAccess.freeDeepDecisionsPerMonth) of the research-heavy ones each month. Pro removes the cap."
             )
             benefit(
                 "Decision Memory",
-                "DECIDE learns what you actually care about from decisions you've made — and only stores what you approve."
+                "RUDDER learns what you actually care about from decisions you've made — and only stores what you approve."
             )
             benefit(
                 "Outcome learning",
@@ -140,18 +140,18 @@ struct PaywallView: View {
     }
 
     private func benefit(_ title: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: DecideSpacing.m) {
+        HStack(alignment: .top, spacing: RudderSpacing.m) {
             Image(systemName: "checkmark")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(DecideColor.accent)
+                .foregroundStyle(RudderColor.accent)
                 .padding(.top, 2)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(DecideFont.callout.weight(.semibold))
-                    .foregroundStyle(DecideColor.primaryText)
+                    .font(RudderFont.callout.weight(.semibold))
+                    .foregroundStyle(RudderColor.primaryText)
                 Text(detail)
-                    .font(DecideFont.footnote)
-                    .foregroundStyle(DecideColor.secondaryText)
+                    .font(RudderFont.footnote)
+                    .foregroundStyle(RudderColor.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -161,11 +161,11 @@ struct PaywallView: View {
     @ViewBuilder
     private var plans: some View {
         if subscriptions.isLoadingProducts {
-            HStack(spacing: DecideSpacing.s) {
+            HStack(spacing: RudderSpacing.s) {
                 ProgressView()
                 Text("Loading plans…")
-                    .font(DecideFont.footnote)
-                    .foregroundStyle(DecideColor.secondaryText)
+                    .font(RudderFont.footnote)
+                    .foregroundStyle(RudderColor.secondaryText)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } else if subscriptions.products.isEmpty {
@@ -174,7 +174,7 @@ struct PaywallView: View {
                 kind: .warning
             )
         } else {
-            VStack(spacing: DecideSpacing.s) {
+            VStack(spacing: RudderSpacing.s) {
                 ForEach(subscriptions.products, id: \.id) { product in
                     PlanRow(
                         product: product,
@@ -191,21 +191,21 @@ struct PaywallView: View {
     }
 
     private var legal: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.xs) {
+        VStack(alignment: .leading, spacing: RudderSpacing.xs) {
             Text("Subscriptions renew automatically until cancelled. Cancel any time in your Apple Account settings, at least 24 hours before the period ends.")
-                .font(DecideFont.caption)
-                .foregroundStyle(DecideColor.tertiaryText)
+                .font(RudderFont.caption)
+                .foregroundStyle(RudderColor.tertiaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: DecideSpacing.m) {
+            HStack(spacing: RudderSpacing.m) {
                 if let url = environment.configuration.privacyPolicyURL {
-                    Link("Privacy Policy", destination: url).font(DecideFont.caption)
+                    Link("Privacy Policy", destination: url).font(RudderFont.caption)
                 }
                 if let url = environment.configuration.termsURL {
-                    Link("Terms of Use", destination: url).font(DecideFont.caption)
+                    Link("Terms of Use", destination: url).font(RudderFont.caption)
                 }
             }
-            .frame(minHeight: DecideSpacing.minimumTouchTarget * 0.8)
+            .frame(minHeight: RudderSpacing.minimumTouchTarget * 0.8)
         }
     }
 
@@ -262,34 +262,34 @@ private struct PlanRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: DecideSpacing.m) {
+            HStack(spacing: RudderSpacing.m) {
                 Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
-                    .foregroundStyle(isSelected ? DecideColor.accent : DecideColor.tertiaryText)
+                    .foregroundStyle(isSelected ? RudderColor.accent : RudderColor.tertiaryText)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(product.displayName)
-                        .font(DecideFont.callout.weight(.semibold))
-                        .foregroundStyle(DecideColor.primaryText)
+                        .font(RudderFont.callout.weight(.semibold))
+                        .foregroundStyle(RudderColor.primaryText)
                     Text("\(product.displayPrice) \(periodDescription)")
-                        .font(DecideFont.footnote)
-                        .foregroundStyle(DecideColor.secondaryText)
+                        .font(RudderFont.footnote)
+                        .foregroundStyle(RudderColor.secondaryText)
                 }
 
-                Spacer(minLength: DecideSpacing.s)
+                Spacer(minLength: RudderSpacing.s)
 
                 if let savingPercentage, savingPercentage > 0 {
                     Text("Save \(savingPercentage)%")
-                        .font(DecideFont.caption.weight(.semibold))
-                        .foregroundStyle(DecideColor.strong)
+                        .font(RudderFont.caption.weight(.semibold))
+                        .foregroundStyle(RudderColor.strong)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: DecideSpacing.minimumTouchTarget, alignment: .leading)
-            .padding(DecideSpacing.m)
-            .background(DecideColor.surface)
-            .clipShape(RoundedRectangle(cornerRadius: DecideSpacing.cornerRadius, style: .continuous))
+            .frame(maxWidth: .infinity, minHeight: RudderSpacing.minimumTouchTarget, alignment: .leading)
+            .padding(RudderSpacing.m)
+            .background(RudderColor.surface)
+            .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: DecideSpacing.cornerRadius, style: .continuous)
-                    .stroke(isSelected ? DecideColor.accent : DecideColor.separator, lineWidth: isSelected ? 1.5 : 0.5)
+                RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous)
+                    .stroke(isSelected ? RudderColor.accent : RudderColor.separator, lineWidth: isSelected ? 1.5 : 0.5)
             )
         }
         .buttonStyle(.plain)

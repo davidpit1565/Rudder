@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>DECIDE</string>
+	<string>RUDDER</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -41,17 +41,17 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<!--
-	  DECIDE's own backend. The app never holds a model provider key: it talks
+	  RUDDER's own backend. The app never holds a model provider key: it talks
 	  only to this endpoint, which keeps the credentials server-side.
-	  Set DECIDE_API_HOST in Config/*.xcconfig before shipping.
+	  Set RUDDER_API_HOST in Config/*.xcconfig before shipping.
 	-->
-	<key>DecideAPIBaseURL</key>
-	<string>$(DECIDE_API_BASE_URL)</string>
-	<key>DecidePrivacyPolicyURL</key>
-	<string>$(DECIDE_PRIVACY_POLICY_URL)</string>
-	<key>DecideTermsURL</key>
-	<string>$(DECIDE_TERMS_URL)</string>
-	<key>DecideSupportURL</key>
-	<string>$(DECIDE_SUPPORT_URL)</string>
+	<key>RudderAPIBaseURL</key>
+	<string>$(RUDDER_API_BASE_URL)</string>
+	<key>RudderPrivacyPolicyURL</key>
+	<string>$(RUDDER_PRIVACY_POLICY_URL)</string>
+	<key>RudderTermsURL</key>
+	<string>$(RUDDER_TERMS_URL)</string>
+	<key>RudderSupportURL</key>
+	<string>$(RUDDER_SUPPORT_URL)</string>
 </dict>
 </plist>

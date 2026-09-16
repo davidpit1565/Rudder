@@ -1,8 +1,8 @@
 import Foundation
 import SwiftData
-import DecideCore
+import RudderCore
 
-/// Decision data: what the user told DECIDE about one specific decision.
+/// Decision data: what the user told RUDDER about one specific decision.
 @Model
 final class StoredDecision {
     @Attribute(.unique) var id: UUID

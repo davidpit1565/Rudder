@@ -1,8 +1,8 @@
 {
-  "name": "decide-backend",
+  "name": "rudder-backend",
   "version": "1.0.0",
   "private": true,
-  "description": "DECIDE's analysis endpoint. Holds the model provider credentials so the iPhone app never has to.",
+  "description": "RUDDER's analysis endpoint. Holds the model provider credentials so the iPhone app never has to.",
   "type": "module",
   "engines": { "node": ">=20" },
   "scripts": {

@@ -21,7 +21,7 @@ jobs:
         run: python3 Scripts/check-release-hygiene.py
 
   decidekit:
-    name: DecideKit (engines and pipeline)
+    name: RudderKit (engines and pipeline)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,7 +29,7 @@ jobs:
         with:
           swift-version: "6.2"
       - name: Test
-        working-directory: Packages/DecideKit
+        working-directory: Packages/RudderKit
         run: swift test
 
   backend:
@@ -49,7 +49,7 @@ jobs:
         working-directory: Backend
         run: npm test
       - name: Fail if the Swift contract fixture drifted
-        run: git diff --exit-code Packages/DecideKit/Tests/DecideCoreTests/Fixtures/backend_contract.json
+        run: git diff --exit-code Packages/RudderKit/Tests/RudderCoreTests/Fixtures/backend_contract.json
 
   app:
     name: iOS app (${{ matrix.device }})
@@ -90,8 +90,8 @@ jobs:
         run: |
           set -euo pipefail
           xcodebuild test \
-            -project Decide.xcodeproj \
-            -scheme Decide \
+            -project Rudder.xcodeproj \
+            -scheme Rudder \
             -destination "id=${{ steps.simulator.outputs.udid }}" \
             -skipPackagePluginValidation \
             CODE_SIGNING_ALLOWED=NO
@@ -102,17 +102,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The Decide scheme's TestAction is pinned to Debug (see project.yml and
-      # Decide.xcscheme), and Release.xcconfig sets ENABLE_TESTABILITY = NO on
+      # The Rudder scheme's TestAction is pinned to Debug (see project.yml and
+      # Rudder.xcscheme), and Release.xcconfig sets ENABLE_TESTABILITY = NO on
       # purpose -- a release build is not meant to carry test hooks. So this job
       # proves the one thing a test run can't: that Release actually compiles and
       # that it resolves to the real production host, not Debug's build settings.
-      - name: Resolve Release's DECIDE_API_BASE_URL and reject a local host
+      - name: Resolve Release's RUDDER_API_BASE_URL and reject a local host
         run: |
           set -euo pipefail
-          resolved=$(xcodebuild -project Decide.xcodeproj -target Decide -configuration Release -showBuildSettings -skipPackagePluginValidation \
-            | sed -nE 's/^[[:space:]]*DECIDE_API_BASE_URL = (.*)$/\1/p')
-          echo "Release DECIDE_API_BASE_URL resolves to: $resolved"
+          resolved=$(xcodebuild -project Rudder.xcodeproj -target Rudder -configuration Release -showBuildSettings -skipPackagePluginValidation \
+            | sed -nE 's/^[[:space:]]*RUDDER_API_BASE_URL = (.*)$/\1/p')
+          echo "Release RUDDER_API_BASE_URL resolves to: $resolved"
           if [ "$resolved" != "https://decide-mu-navy.vercel.app" ]; then
             echo "::error::Expected https://decide-mu-navy.vercel.app, got '$resolved'"
             exit 1
@@ -127,9 +127,9 @@ jobs:
       - name: Confirm Debug does not also resolve to the production host
         run: |
           set -euo pipefail
-          resolved=$(xcodebuild -project Decide.xcodeproj -target Decide -configuration Debug -showBuildSettings -skipPackagePluginValidation \
-            | sed -nE 's/^[[:space:]]*DECIDE_API_BASE_URL = (.*)$/\1/p')
-          echo "Debug DECIDE_API_BASE_URL resolves to: $resolved"
+          resolved=$(xcodebuild -project Rudder.xcodeproj -target Rudder -configuration Debug -showBuildSettings -skipPackagePluginValidation \
+            | sed -nE 's/^[[:space:]]*RUDDER_API_BASE_URL = (.*)$/\1/p')
+          echo "Debug RUDDER_API_BASE_URL resolves to: $resolved"
           if [ "$resolved" = "https://decide-mu-navy.vercel.app" ]; then
             echo "::error::Debug also resolves to production -- Debug/Release are no longer isolated"
             exit 1
@@ -139,8 +139,8 @@ jobs:
         run: |
           set -euo pipefail
           xcodebuild build \
-            -project Decide.xcodeproj \
-            -scheme Decide \
+            -project Rudder.xcodeproj \
+            -scheme Rudder \
             -configuration Release \
             -destination "generic/platform=iOS Simulator" \
             -derivedDataPath ReleaseBuild \
@@ -153,14 +153,14 @@ jobs:
       - name: Verify the built Release app's Info.plist carries the production URL
         run: |
           set -euo pipefail
-          app_path=$(find ReleaseBuild/Build/Products -maxdepth 2 -name "Decide.app" -print -quit)
+          app_path=$(find ReleaseBuild/Build/Products -maxdepth 2 -name "Rudder.app" -print -quit)
           if [ -z "$app_path" ]; then
-            echo "::error::Could not find built Decide.app under ReleaseBuild/Build/Products"
+            echo "::error::Could not find built Rudder.app under ReleaseBuild/Build/Products"
             exit 1
           fi
-          value=$(/usr/libexec/PlistBuddy -c "Print :DecideAPIBaseURL" "$app_path/Info.plist")
-          echo "Built app Info.plist DecideAPIBaseURL: $value"
+          value=$(/usr/libexec/PlistBuddy -c "Print :RudderAPIBaseURL" "$app_path/Info.plist")
+          echo "Built app Info.plist RudderAPIBaseURL: $value"
           if [ "$value" != "https://decide-mu-navy.vercel.app" ]; then
-            echo "::error::Built Release app's Info.plist has DecideAPIBaseURL='$value'"
+            echo "::error::Built Release app's Info.plist has RudderAPIBaseURL='$value'"
             exit 1
           fi

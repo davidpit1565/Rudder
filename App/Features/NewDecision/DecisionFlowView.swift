@@ -1,7 +1,7 @@
 import SwiftUI
 import Foundation
-import DecideCore
-import DecideFlow
+import RudderCore
+import RudderFlow
 
 /// Runs one decision. Which screen the user sees is whatever the pipeline is
 /// genuinely doing — there is no scripted sequence of animations.
@@ -23,7 +23,7 @@ struct DecisionFlowView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .background(DecideColor.background)
+            .background(RudderColor.background)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Close") {
@@ -115,7 +115,7 @@ private struct WorkingScreen: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: DecideSpacing.l) {
+            VStack(alignment: .leading, spacing: RudderSpacing.l) {
                 WorkingStateView(
                     title: state.progressTitle ?? "Working",
                     subtitle: state.progressSubtitle
@@ -126,7 +126,7 @@ private struct WorkingScreen: View {
                 }
             }
             .screenPadding()
-            .padding(.top, DecideSpacing.xl)
+            .padding(.top, RudderSpacing.xl)
         }
     }
 }
@@ -136,21 +136,21 @@ private struct PreliminaryCard: View {
     let direction: PreliminaryDirection
 
     var body: some View {
-        DecideCard {
-            VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        RudderCard {
+            VStack(alignment: .leading, spacing: RudderSpacing.s) {
                 Text("I already have a direction")
-                    .font(DecideFont.footnote.weight(.medium))
-                    .foregroundStyle(DecideColor.tertiaryText)
+                    .font(RudderFont.footnote.weight(.medium))
+                    .foregroundStyle(RudderColor.tertiaryText)
                 Text(direction.optionName)
-                    .font(DecideFont.title)
-                    .foregroundStyle(DecideColor.primaryText)
+                    .font(RudderFont.title)
+                    .foregroundStyle(RudderColor.primaryText)
                 Text(direction.rationale)
-                    .font(DecideFont.callout)
-                    .foregroundStyle(DecideColor.secondaryText)
+                    .font(RudderFont.callout)
+                    .foregroundStyle(RudderColor.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
                 Text("Before I finalize it…")
-                    .font(DecideFont.footnote)
-                    .foregroundStyle(DecideColor.tertiaryText)
+                    .font(RudderFont.footnote)
+                    .foregroundStyle(RudderColor.tertiaryText)
             }
         }
         .accessibilityElement(children: .combine)
@@ -181,18 +181,18 @@ private struct QuestionScreen: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: DecideSpacing.l) {
+            VStack(alignment: .leading, spacing: RudderSpacing.l) {
                 if let preliminary {
                     PreliminaryCard(direction: preliminary)
                 }
 
-                VStack(alignment: .leading, spacing: DecideSpacing.s) {
+                VStack(alignment: .leading, spacing: RudderSpacing.s) {
                     Text("One thing I need to know")
-                        .font(DecideFont.footnote.weight(.medium))
-                        .foregroundStyle(DecideColor.tertiaryText)
+                        .font(RudderFont.footnote.weight(.medium))
+                        .foregroundStyle(RudderColor.tertiaryText)
                     Text(question.text)
-                        .font(DecideFont.title)
-                        .foregroundStyle(DecideColor.primaryText)
+                        .font(RudderFont.title)
+                        .foregroundStyle(RudderColor.primaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityElement(children: .combine)
@@ -200,16 +200,16 @@ private struct QuestionScreen: View {
                 answerControls
             }
             .screenPadding()
-            .padding(.top, DecideSpacing.l)
-            .padding(.bottom, DecideSpacing.xxl)
+            .padding(.top, RudderSpacing.l)
+            .padding(.bottom, RudderSpacing.xxl)
         }
         .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .bottom) {
-            VStack(spacing: DecideSpacing.s) {
+            VStack(spacing: RudderSpacing.s) {
                 PrimaryButton(
                     title: "Continue",
                     isEnabled: canSubmit,
-                    identifier: DecideID.continueAfterQuestion
+                    identifier: RudderID.continueAfterQuestion
                 ) {
                     isFocused = false
                     onAnswer(submissionValue)
@@ -218,12 +218,12 @@ private struct QuestionScreen: View {
                     isFocused = false
                     onSkip()
                 }
-                .font(DecideFont.footnote)
-                .frame(minHeight: DecideSpacing.minimumTouchTarget)
-                .accessibilityHint("Continues without this answer, and DECIDE will say what it had to assume")
+                .font(RudderFont.footnote)
+                .frame(minHeight: RudderSpacing.minimumTouchTarget)
+                .accessibilityHint("Continues without this answer, and RUDDER will say what it had to assume")
             }
             .screenPadding()
-            .padding(.vertical, DecideSpacing.s)
+            .padding(.vertical, RudderSpacing.s)
             .background(.bar)
         }
     }
@@ -242,19 +242,19 @@ private struct QuestionScreen: View {
         switch question.kind {
         case .freeText:
             TextField("Your answer", text: $freeText, axis: .vertical)
-                .font(DecideFont.body)
+                .font(RudderFont.body)
                 .lineLimit(2...6)
                 .focused($isFocused)
-                .padding(DecideSpacing.m)
-                .background(DecideColor.surface)
-                .clipShape(RoundedRectangle(cornerRadius: DecideSpacing.cornerRadius, style: .continuous))
+                .padding(RudderSpacing.m)
+                .background(RudderColor.surface)
+                .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: DecideSpacing.cornerRadius, style: .continuous)
-                        .stroke(DecideColor.separator, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous)
+                        .stroke(RudderColor.separator, lineWidth: 1)
                 )
 
         case .singleChoice, .multipleChoice:
-            VStack(spacing: DecideSpacing.s) {
+            VStack(spacing: RudderSpacing.s) {
                 ForEach(question.choices, id: \.self) { choice in
                     ChoiceRow(
                         title: choice,
@@ -287,23 +287,23 @@ private struct ChoiceRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: DecideSpacing.m) {
+            HStack(spacing: RudderSpacing.m) {
                 Image(systemName: symbol)
-                    .foregroundStyle(isSelected ? DecideColor.accent : DecideColor.tertiaryText)
+                    .foregroundStyle(isSelected ? RudderColor.accent : RudderColor.tertiaryText)
                 Text(title)
-                    .font(DecideFont.body)
-                    .foregroundStyle(DecideColor.primaryText)
+                    .font(RudderFont.body)
+                    .foregroundStyle(RudderColor.primaryText)
                     .multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, minHeight: DecideSpacing.minimumTouchTarget, alignment: .leading)
-            .padding(.horizontal, DecideSpacing.m)
-            .padding(.vertical, DecideSpacing.s)
-            .background(DecideColor.surface)
-            .clipShape(RoundedRectangle(cornerRadius: DecideSpacing.cornerRadius, style: .continuous))
+            .frame(maxWidth: .infinity, minHeight: RudderSpacing.minimumTouchTarget, alignment: .leading)
+            .padding(.horizontal, RudderSpacing.m)
+            .padding(.vertical, RudderSpacing.s)
+            .background(RudderColor.surface)
+            .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: DecideSpacing.cornerRadius, style: .continuous)
-                    .stroke(isSelected ? DecideColor.accent : DecideColor.separator, lineWidth: isSelected ? 1.5 : 0.5)
+                RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous)
+                    .stroke(isSelected ? RudderColor.accent : RudderColor.separator, lineWidth: isSelected ? 1.5 : 0.5)
             )
         }
         .buttonStyle(.plain)
@@ -328,28 +328,28 @@ private struct InsufficientScreen: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: DecideSpacing.l) {
-                VStack(alignment: .leading, spacing: DecideSpacing.s) {
+            VStack(alignment: .leading, spacing: RudderSpacing.l) {
+                VStack(alignment: .leading, spacing: RudderSpacing.s) {
                     Text("I'm missing something important")
-                        .font(DecideFont.title)
-                        .foregroundStyle(DecideColor.primaryText)
+                        .font(RudderFont.title)
+                        .foregroundStyle(RudderColor.primaryText)
                     Text("I could give you a guess, but I don't think that would be useful.")
-                        .font(DecideFont.callout)
-                        .foregroundStyle(DecideColor.secondaryText)
+                        .font(RudderFont.callout)
+                        .foregroundStyle(RudderColor.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityElement(children: .combine)
 
                 if !missing.isEmpty {
-                    DecideCard {
-                        VStack(alignment: .leading, spacing: DecideSpacing.s) {
+                    RudderCard {
+                        VStack(alignment: .leading, spacing: RudderSpacing.s) {
                             Text("What I need")
-                                .font(DecideFont.footnote.weight(.medium))
-                                .foregroundStyle(DecideColor.tertiaryText)
+                                .font(RudderFont.footnote.weight(.medium))
+                                .foregroundStyle(RudderColor.tertiaryText)
                             ForEach(missing, id: \.self) { item in
                                 Text("• \(item)")
-                                    .font(DecideFont.callout)
-                                    .foregroundStyle(DecideColor.primaryText)
+                                    .font(RudderFont.callout)
+                                    .foregroundStyle(RudderColor.primaryText)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
@@ -357,14 +357,14 @@ private struct InsufficientScreen: View {
                 }
 
                 if let partial, let recommended = partial.recommendedOption {
-                    DecideCard {
-                        VStack(alignment: .leading, spacing: DecideSpacing.s) {
+                    RudderCard {
+                        VStack(alignment: .leading, spacing: RudderSpacing.s) {
                             Text("Where I'd lean anyway")
-                                .font(DecideFont.footnote.weight(.medium))
-                                .foregroundStyle(DecideColor.tertiaryText)
+                                .font(RudderFont.footnote.weight(.medium))
+                                .foregroundStyle(RudderColor.tertiaryText)
                             Text(recommended.name)
-                                .font(DecideFont.headline)
-                                .foregroundStyle(DecideColor.primaryText)
+                                .font(RudderFont.headline)
+                                .foregroundStyle(RudderColor.primaryText)
                             StrengthBadge(strength: partial.strength, showsExplanation: true)
                             SecondaryButton(title: "Choose \(recommended.name) anyway") {
                                 onChoose(recommended.id)
@@ -374,13 +374,13 @@ private struct InsufficientScreen: View {
                 }
             }
             .screenPadding()
-            .padding(.top, DecideSpacing.l)
-            .padding(.bottom, DecideSpacing.xxl)
+            .padding(.top, RudderSpacing.l)
+            .padding(.bottom, RudderSpacing.xxl)
         }
         .safeAreaInset(edge: .bottom) {
             PrimaryButton(title: "Close", action: onClose)
                 .screenPadding()
-                .padding(.vertical, DecideSpacing.s)
+                .padding(.vertical, RudderSpacing.s)
                 .background(.bar)
         }
     }
@@ -389,32 +389,32 @@ private struct InsufficientScreen: View {
 // MARK: - Errors
 
 private struct ErrorScreen: View {
-    let error: DecideServiceError
+    let error: RudderServiceError
     let onRetry: () -> Void
     let onClose: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.l) {
-            VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        VStack(alignment: .leading, spacing: RudderSpacing.l) {
+            VStack(alignment: .leading, spacing: RudderSpacing.s) {
                 Text(error.errorDescription ?? "Something went wrong")
-                    .font(DecideFont.title)
-                    .foregroundStyle(DecideColor.primaryText)
+                    .font(RudderFont.title)
+                    .foregroundStyle(RudderColor.primaryText)
                 if let suggestion = error.recoverySuggestion {
                     Text(suggestion)
-                        .font(DecideFont.callout)
-                        .foregroundStyle(DecideColor.secondaryText)
+                        .font(RudderFont.callout)
+                        .foregroundStyle(RudderColor.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .accessibilityElement(children: .combine)
 
             if error.isRetryable {
-                PrimaryButton(title: "Try again", identifier: DecideID.tryAgain, action: onRetry)
+                PrimaryButton(title: "Try again", identifier: RudderID.tryAgain, action: onRetry)
             }
             SecondaryButton(title: "Close", action: onClose)
             Spacer(minLength: 0)
         }
         .screenPadding()
-        .padding(.top, DecideSpacing.xl)
+        .padding(.top, RudderSpacing.xl)
     }
 }

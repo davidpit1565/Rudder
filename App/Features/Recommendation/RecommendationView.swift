@@ -1,6 +1,6 @@
 import SwiftUI
 import Foundation
-import DecideCore
+import RudderCore
 
 /// The answer first. Everything that explains it lives behind "See analysis".
 struct RecommendationView: View {
@@ -21,7 +21,7 @@ struct RecommendationView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: DecideSpacing.l) {
+            VStack(alignment: .leading, spacing: RudderSpacing.l) {
                 if hasChosen, let chosenID = chosenOptionID {
                     ChoiceConfirmation(result: result, chosenOptionID: chosenID)
                 } else if result.strength == .unclear && result.ranking.count > 1 {
@@ -37,8 +37,8 @@ struct RecommendationView: View {
                 }
             }
             .screenPadding()
-            .padding(.top, DecideSpacing.m)
-            .padding(.bottom, DecideSpacing.xxl)
+            .padding(.top, RudderSpacing.m)
+            .padding(.bottom, RudderSpacing.xxl)
         }
         .safeAreaInset(edge: .bottom) {
             bottomAction
@@ -65,12 +65,12 @@ struct RecommendationView: View {
 
     @ViewBuilder
     private var bottomAction: some View {
-        VStack(spacing: DecideSpacing.s) {
+        VStack(spacing: RudderSpacing.s) {
             if hasChosen {
-                PrimaryButton(title: "Done", identifier: DecideID.doneWithDecision, action: onDone)
+                PrimaryButton(title: "Done", identifier: RudderID.doneWithDecision, action: onDone)
             } else if let recommended = result.recommendedOption, result.strength != .unclear {
-                // Never "accept". The user is not approving DECIDE's decision.
-                PrimaryButton(title: "Make my decision", identifier: DecideID.makeDecision) {
+                // Never "accept". The user is not approving RUDDER's decision.
+                PrimaryButton(title: "Make my decision", identifier: RudderID.makeDecision) {
                     onChoose(recommended.id)
                 }
                 // Lived inside the ScrollView content before; a confirmed
@@ -90,45 +90,45 @@ struct RecommendationView: View {
                         Image(systemName: "chevron.right")
                             .font(.caption.weight(.semibold))
                     }
-                    .font(DecideFont.footnote)
-                    .frame(minHeight: DecideSpacing.minimumTouchTarget)
+                    .font(RudderFont.footnote)
+                    .frame(minHeight: RudderSpacing.minimumTouchTarget)
                 }
                 .accessibilityHint("Criteria, comparison, assumptions, risks and sources")
                 if result.ranking.count > 1 {
                     Button("Choose something else") { presentation = .otherOptions }
-                        .font(DecideFont.footnote)
-                        .frame(minHeight: DecideSpacing.minimumTouchTarget)
-                        .accessibilityIdentifier(DecideID.chooseSomethingElse)
+                        .font(RudderFont.footnote)
+                        .frame(minHeight: RudderSpacing.minimumTouchTarget)
+                        .accessibilityIdentifier(RudderID.chooseSomethingElse)
                 }
             }
         }
         .screenPadding()
-        .padding(.vertical, DecideSpacing.s)
+        .padding(.vertical, RudderSpacing.s)
         .background(.bar)
     }
 
     @ViewBuilder
     private func recommendation(for option: DecisionOption) -> some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.l) {
-            VStack(alignment: .leading, spacing: DecideSpacing.xs) {
+        VStack(alignment: .leading, spacing: RudderSpacing.l) {
+            VStack(alignment: .leading, spacing: RudderSpacing.xs) {
                 Text("MY RECOMMENDATION")
-                    .font(DecideFont.monoLabel)
-                    .foregroundStyle(DecideColor.tertiaryText)
+                    .font(RudderFont.monoLabel)
+                    .foregroundStyle(RudderColor.tertiaryText)
                     .accessibilityHidden(true)
                 Text(option.name)
-                    .font(DecideFont.display)
-                    .foregroundStyle(DecideColor.primaryText)
+                    .font(RudderFont.display)
+                    .foregroundStyle(RudderColor.primaryText)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(result.headline.isEmpty ? "Best fit for you" : result.headline)
-                    .font(DecideFont.callout)
-                    .foregroundStyle(DecideColor.secondaryText)
+                    .font(RudderFont.callout)
+                    .foregroundStyle(RudderColor.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("My recommendation: \(option.name). \(result.headline)")
 
             if !result.reasons.isEmpty {
-                VStack(alignment: .leading, spacing: DecideSpacing.m) {
+                VStack(alignment: .leading, spacing: RudderSpacing.m) {
                     SectionHeader(title: "Why it fits you")
                     ForEach(Array(result.reasons.prefix(3).enumerated()), id: \.element.id) { index, reason in
                         NumberedRow(index: index + 1, title: reason.title, detail: reason.detail)
@@ -137,38 +137,38 @@ struct RecommendationView: View {
             }
 
             if let tradeOff = result.tradeOffs.first {
-                DecideCard {
-                    VStack(alignment: .leading, spacing: DecideSpacing.xs) {
+                RudderCard {
+                    VStack(alignment: .leading, spacing: RudderSpacing.xs) {
                         Text("The trade-off")
-                            .font(DecideFont.footnote.weight(.medium))
-                            .foregroundStyle(DecideColor.tertiaryText)
+                            .font(RudderFont.footnote.weight(.medium))
+                            .foregroundStyle(RudderColor.tertiaryText)
                         Text("You're giving up \(tradeOff.givingUp.lowercasedFirst) to get \(tradeOff.gaining.lowercasedFirst).")
-                            .font(DecideFont.callout)
-                            .foregroundStyle(DecideColor.primaryText)
+                            .font(RudderFont.callout)
+                            .foregroundStyle(RudderColor.primaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .accessibilityElement(children: .combine)
             }
 
-            DecideCard {
-                VStack(alignment: .leading, spacing: DecideSpacing.s) {
+            RudderCard {
+                VStack(alignment: .leading, spacing: RudderSpacing.s) {
                     Text("Decision strength")
-                        .font(DecideFont.footnote.weight(.medium))
-                        .foregroundStyle(DecideColor.tertiaryText)
+                        .font(RudderFont.footnote.weight(.medium))
+                        .foregroundStyle(RudderColor.tertiaryText)
                     StrengthBadge(strength: result.strength, showsExplanation: true)
                 }
             }
 
             if let challenge = result.challenge {
-                DecideCard {
-                    VStack(alignment: .leading, spacing: DecideSpacing.s) {
+                RudderCard {
+                    VStack(alignment: .leading, spacing: RudderSpacing.s) {
                         Text("What could make me wrong?")
-                            .font(DecideFont.footnote.weight(.medium))
-                            .foregroundStyle(DecideColor.tertiaryText)
+                            .font(RudderFont.footnote.weight(.medium))
+                            .foregroundStyle(RudderColor.tertiaryText)
                         Text(challenge.strongestCaseAgainst)
-                            .font(DecideFont.callout)
-                            .foregroundStyle(DecideColor.primaryText)
+                            .font(RudderFont.callout)
+                            .foregroundStyle(RudderColor.primaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -200,29 +200,29 @@ private struct NoClearWinnerSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.l) {
-            VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        VStack(alignment: .leading, spacing: RudderSpacing.l) {
+            VStack(alignment: .leading, spacing: RudderSpacing.s) {
                 Text("There isn't a clear winner")
-                    .font(DecideFont.display)
-                    .foregroundStyle(DecideColor.primaryText)
+                    .font(RudderFont.display)
+                    .foregroundStyle(RudderColor.primaryText)
                     .fixedSize(horizontal: false, vertical: true)
                 Text("Each of these is better at something different, and neither stays ahead when your priorities shift.")
-                    .font(DecideFont.callout)
-                    .foregroundStyle(DecideColor.secondaryText)
+                    .font(RudderFont.callout)
+                    .foregroundStyle(RudderColor.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
 
             ForEach(topTwo) { option in
-                DecideCard {
-                    VStack(alignment: .leading, spacing: DecideSpacing.s) {
+                RudderCard {
+                    VStack(alignment: .leading, spacing: RudderSpacing.s) {
                         Text(option.name)
-                            .font(DecideFont.headline)
-                            .foregroundStyle(DecideColor.primaryText)
+                            .font(RudderFont.headline)
+                            .foregroundStyle(RudderColor.primaryText)
                         if let strengths = bestCriteria(for: option), !strengths.isEmpty {
                             Text("Choose it if \(strengths) matters most.")
-                                .font(DecideFont.callout)
-                                .foregroundStyle(DecideColor.secondaryText)
+                                .font(RudderFont.callout)
+                                .foregroundStyle(RudderColor.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         SecondaryButton(title: "Choose \(option.name)") { onChoose(option.id) }
@@ -230,20 +230,20 @@ private struct NoClearWinnerSection: View {
                 }
             }
 
-            DecideCard {
-                VStack(alignment: .leading, spacing: DecideSpacing.s) {
+            RudderCard {
+                VStack(alignment: .leading, spacing: RudderSpacing.s) {
                     StrengthBadge(strength: .unclear, showsExplanation: true)
                     if let leading = result.recommendedOption {
                         if showingConditionalPick {
                             Text("If you want me to break the tie: \(leading.name), by a margin small enough that I wouldn't defend it.")
-                                .font(DecideFont.callout)
-                                .foregroundStyle(DecideColor.primaryText)
+                                .font(RudderFont.callout)
+                                .foregroundStyle(RudderColor.primaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                             SecondaryButton(title: "Choose \(leading.name)") { onChoose(leading.id) }
                         } else {
                             Button("Choose for me anyway") { showingConditionalPick = true }
-                                .font(DecideFont.footnote)
-                                .frame(minHeight: DecideSpacing.minimumTouchTarget)
+                                .font(RudderFont.footnote)
+                                .frame(minHeight: RudderSpacing.minimumTouchTarget)
                         }
                     }
                 }
@@ -275,54 +275,54 @@ private struct OtherOptionsSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: DecideSpacing.s) {
+                VStack(spacing: RudderSpacing.s) {
                     ForEach(result.ranking) { scored in
                         Button {
                             onChoose(scored.optionID)
                         } label: {
-                            DecideCard {
+                            RudderCard {
                                 HStack {
-                                    VStack(alignment: .leading, spacing: DecideSpacing.xs) {
+                                    VStack(alignment: .leading, spacing: RudderSpacing.xs) {
                                         Text(scored.name)
-                                            .font(DecideFont.callout.weight(.semibold))
-                                            .foregroundStyle(DecideColor.primaryText)
+                                            .font(RudderFont.callout.weight(.semibold))
+                                            .foregroundStyle(RudderColor.primaryText)
                                         if scored.optionID == result.recommendedOptionID {
                                             Text("My recommendation")
-                                                .font(DecideFont.caption)
-                                                .foregroundStyle(DecideColor.secondaryText)
+                                                .font(RudderFont.caption)
+                                                .foregroundStyle(RudderColor.secondaryText)
                                         }
                                     }
-                                    Spacer(minLength: DecideSpacing.s)
+                                    Spacer(minLength: RudderSpacing.s)
                                     Image(systemName: "chevron.right")
                                         .font(.caption)
-                                        .foregroundStyle(DecideColor.tertiaryText)
+                                        .foregroundStyle(RudderColor.tertiaryText)
                                 }
                             }
                         }
                         .buttonStyle(.plain)
-                        .accessibilityIdentifier(DecideID.optionRow(scored.optionID))
+                        .accessibilityIdentifier(RudderID.optionRow(scored.optionID))
                     }
 
                     if !result.eliminated.isEmpty {
-                        VStack(alignment: .leading, spacing: DecideSpacing.xs) {
+                        VStack(alignment: .leading, spacing: RudderSpacing.xs) {
                             Text("Ruled out by your requirements")
-                                .font(DecideFont.footnote.weight(.medium))
-                                .foregroundStyle(DecideColor.tertiaryText)
+                                .font(RudderFont.footnote.weight(.medium))
+                                .foregroundStyle(RudderColor.tertiaryText)
                             ForEach(result.eliminated) { option in
                                 Text("\(option.name) — \(option.failedConstraints.joined(separator: ", "))")
-                                    .font(DecideFont.footnote)
-                                    .foregroundStyle(DecideColor.secondaryText)
+                                    .font(RudderFont.footnote)
+                                    .foregroundStyle(RudderColor.secondaryText)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, DecideSpacing.m)
+                        .padding(.top, RudderSpacing.m)
                     }
                 }
                 .screenPadding()
-                .padding(.vertical, DecideSpacing.m)
+                .padding(.vertical, RudderSpacing.m)
             }
-            .background(DecideColor.background)
+            .background(RudderColor.background)
             .navigationTitle("Your options")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -369,51 +369,51 @@ private struct ChoiceConfirmation: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.l) {
-            VStack(alignment: .leading, spacing: DecideSpacing.xs) {
+        VStack(alignment: .leading, spacing: RudderSpacing.l) {
+            VStack(alignment: .leading, spacing: RudderSpacing.xs) {
                 Text("You chose")
-                    .font(DecideFont.footnote.weight(.medium))
-                    .foregroundStyle(DecideColor.tertiaryText)
+                    .font(RudderFont.footnote.weight(.medium))
+                    .foregroundStyle(RudderColor.tertiaryText)
                 Text(chosen?.name ?? "your option")
-                    .font(DecideFont.display)
-                    .foregroundStyle(DecideColor.primaryText)
+                    .font(RudderFont.display)
+                    .foregroundStyle(RudderColor.primaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
 
             if !gaining.isEmpty {
-                DecideCard {
-                    VStack(alignment: .leading, spacing: DecideSpacing.xs) {
+                RudderCard {
+                    VStack(alignment: .leading, spacing: RudderSpacing.xs) {
                         Text("You're gaining")
-                            .font(DecideFont.footnote.weight(.medium))
-                            .foregroundStyle(DecideColor.tertiaryText)
+                            .font(RudderFont.footnote.weight(.medium))
+                            .foregroundStyle(RudderColor.tertiaryText)
                         ForEach(gaining, id: \.self) { item in
                             Text("• \(item)")
-                                .font(DecideFont.callout)
-                                .foregroundStyle(DecideColor.primaryText)
+                                .font(RudderFont.callout)
+                                .foregroundStyle(RudderColor.primaryText)
                         }
                     }
                 }
             }
 
             if !givingUp.isEmpty {
-                DecideCard {
-                    VStack(alignment: .leading, spacing: DecideSpacing.xs) {
+                RudderCard {
+                    VStack(alignment: .leading, spacing: RudderSpacing.xs) {
                         Text("You're giving up")
-                            .font(DecideFont.footnote.weight(.medium))
-                            .foregroundStyle(DecideColor.tertiaryText)
+                            .font(RudderFont.footnote.weight(.medium))
+                            .foregroundStyle(RudderColor.tertiaryText)
                         ForEach(givingUp, id: \.self) { item in
                             Text("• \(item)")
-                                .font(DecideFont.callout)
-                                .foregroundStyle(DecideColor.primaryText)
+                                .font(RudderFont.callout)
+                                .foregroundStyle(RudderColor.primaryText)
                         }
                     }
                 }
             }
 
             Text("Your choice is yours.")
-                .font(DecideFont.callout)
-                .foregroundStyle(DecideColor.secondaryText)
+                .font(RudderFont.callout)
+                .foregroundStyle(RudderColor.secondaryText)
         }
     }
 }

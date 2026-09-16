@@ -1,13 +1,13 @@
-# XcodeGen spec — the declarative source of truth for Decide.xcodeproj.
+# XcodeGen spec — the declarative source of truth for Rudder.xcodeproj.
 #
-# The committed Decide.xcodeproj is generated from this file. If the project ever
+# The committed Rudder.xcodeproj is generated from this file. If the project ever
 # needs regenerating (merge conflict, Xcode upgrade), install XcodeGen and run:
 #
 #     xcodegen generate
 #
-name: Decide
+name: Rudder
 options:
-  bundleIdPrefix: com.decide
+  bundleIdPrefix: com.rudder
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -23,20 +23,20 @@ settings:
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 
 packages:
-  DecideKit:
-    path: Packages/DecideKit
+  RudderKit:
+    path: Packages/RudderKit
 
 targets:
-  Decide:
+  Rudder:
     type: application
     platform: iOS
     sources:
       - path: App
     dependencies:
-      - package: DecideKit
-        product: DecideCore
-      - package: DecideKit
-        product: DecideFlow
+      - package: RudderKit
+        product: RudderCore
+      - package: RudderKit
+        product: RudderFlow
     configFiles:
       Debug: Config/Debug.xcconfig
       Release: Config/Release.xcconfig
@@ -47,46 +47,46 @@ targets:
         # the real one.
         GENERATE_INFOPLIST_FILE: NO
 
-  DecideTests:
+  RudderTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: Tests/DecideAppTests
+      - path: Tests/RudderAppTests
     dependencies:
-      - target: Decide
-      - package: DecideKit
-        product: DecideCore
-      - package: DecideKit
-        product: DecideFlow
+      - target: Rudder
+      - package: RudderKit
+        product: RudderCore
+      - package: RudderKit
+        product: RudderFlow
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
 
-  DecideUITests:
+  RudderUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: Tests/DecideUITests
+      - path: Tests/RudderUITests
     dependencies:
-      - target: Decide
+      - target: Rudder
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:
-  Decide:
+  Rudder:
     build:
       targets:
-        Decide: all
+        Rudder: all
     run:
       config: Debug
-      storeKitConfiguration: Config/Decide.storekit
+      storeKitConfiguration: Config/Rudder.storekit
     test:
       config: Debug
       gatherCoverageData: true
       targets:
-        - DecideTests
-        - DecideUITests
+        - RudderTests
+        - RudderUITests
     profile:
       config: Release
     analyze:

@@ -3,7 +3,7 @@
 Paste into the "Notes" field in App Store Connect.
 
 ```
-DECIDE analyses a decision the user describes in their own words and returns a
+RUDDER analyses a decision the user describes in their own words and returns a
 recommendation, the trade-off involved, how stable that recommendation is, and
 the strongest case against it.
 
@@ -24,7 +24,7 @@ HOW TO SEE THE FULL FLOW
    and the controls to delete decisions, memory, outcomes, or everything.
 
 SUBSCRIPTION
-DECIDE Pro (monthly com.decide.app.pro.monthly, annual com.decide.app.pro.annual)
+RUDDER Pro (monthly com.rudder.app.pro.monthly, annual com.rudder.app.pro.annual)
 adds deeper research, more analysis, Decision Memory and full history. The paywall
 is reachable at any time from Profile > Your plan > See Pro, and Restore Purchases
 is on both the paywall and the Profile tab. The first decision is never blocked.

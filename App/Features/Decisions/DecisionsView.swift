@@ -1,6 +1,6 @@
 import SwiftUI
 import Foundation
-import DecideCore
+import RudderCore
 
 extension DecisionRecord {
     /// Research goes out of date. After a couple of months, a decision that leaned
@@ -69,14 +69,14 @@ struct DecisionsView: View {
                     .screenPadding()
                 } else {
                     ScrollView {
-                        VStack(spacing: DecideSpacing.s) {
+                        VStack(spacing: RudderSpacing.s) {
                             Picker("Filter", selection: $filter) {
                                 ForEach(Filter.allCases) { option in
                                     Text(option.rawValue).tag(option)
                                 }
                             }
                             .pickerStyle(.segmented)
-                            .padding(.bottom, DecideSpacing.xs)
+                            .padding(.bottom, RudderSpacing.xs)
 
                             if filtered.isEmpty {
                                 EmptyStateView(
@@ -94,7 +94,7 @@ struct DecisionsView: View {
                                         DecisionRow(record: record)
                                     }
                                     .buttonStyle(.plain)
-                                    .accessibilityIdentifier(DecideID.historyRow)
+                                    .accessibilityIdentifier(RudderID.historyRow)
                                 }
                             }
 
@@ -103,11 +103,11 @@ struct DecisionsView: View {
                             }
                         }
                         .screenPadding()
-                        .padding(.vertical, DecideSpacing.m)
+                        .padding(.vertical, RudderSpacing.m)
                     }
                 }
             }
-            .background(DecideColor.background)
+            .background(RudderColor.background)
             .navigationTitle("Your decisions")
             .searchable(text: $query, prompt: "Search decisions")
         }
@@ -119,15 +119,15 @@ private struct HiddenHistoryNotice: View {
     @State private var showingPaywall = false
 
     var body: some View {
-        DecideCard {
-            VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        RudderCard {
+            VStack(alignment: .leading, spacing: RudderSpacing.s) {
                 Text("\(hidden) older \(hidden == 1 ? "decision is" : "decisions are") still saved on this device")
-                    .font(DecideFont.callout.weight(.medium))
-                    .foregroundStyle(DecideColor.primaryText)
+                    .font(RudderFont.callout.weight(.medium))
+                    .foregroundStyle(RudderColor.primaryText)
                     .fixedSize(horizontal: false, vertical: true)
                 Text("Pro shows your full history. Nothing has been deleted.")
-                    .font(DecideFont.footnote)
-                    .foregroundStyle(DecideColor.secondaryText)
+                    .font(RudderFont.footnote)
+                    .foregroundStyle(RudderColor.secondaryText)
                 SecondaryButton(title: "See Pro") { showingPaywall = true }
             }
         }

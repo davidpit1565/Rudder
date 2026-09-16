@@ -118,7 +118,7 @@ const CONFIDENCE_PATTERNS: Array<[RegExp, string]> = [
 ];
 
 /**
- * DECIDE never reports a confidence number. Decision strength is computed on the
+ * RUDDER never reports a confidence number. Decision strength is computed on the
  * device by re-running the analysis under varied priorities, so a percentage here
  * would be invented certainty dressed as a measurement.
  */

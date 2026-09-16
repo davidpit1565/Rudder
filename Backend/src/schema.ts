@@ -3,7 +3,7 @@ import * as z from "zod/v4";
 /**
  * The contract between the iPhone app and this endpoint.
  *
- * It mirrors `AIDecisionResponse` in Packages/DecideKit/Sources/DecideCore/AI/AIContract.swift.
+ * It mirrors `AIDecisionResponse` in Packages/RudderKit/Sources/RudderCore/AI/AIContract.swift.
  * Both sides validate it: the model is not trusted, and neither is the network.
  */
 export const SCHEMA_VERSION = 1;

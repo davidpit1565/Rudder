@@ -1,6 +1,6 @@
 import Foundation
 import SwiftData
-import DecideCore
+import RudderCore
 
 /// Local-first storage. Nothing here needs a network or an account: history and
 /// memory work fully offline, and deletion is real deletion.

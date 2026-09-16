@@ -1,12 +1,12 @@
 import Foundation
 import Observation
-import DecideCore
-import DecideFlow
+import RudderCore
+import RudderFlow
 
 /// What Free gets and what Pro adds.
 ///
 /// The rule that matters: nobody meets a paywall before they have had a real,
-/// finished decision out of DECIDE.
+/// finished decision out of RUDDER.
 enum FeatureAccess {
     /// Deep decisions (the full research + analysis pipeline) per calendar month on Free.
     static let freeDeepDecisionsPerMonth = 3
@@ -36,7 +36,7 @@ final class AppEnvironment {
 
     private(set) var decisions: [DecisionRecord] = []
     private(set) var memory: [MemoryEntry] = []
-    /// A preference DECIDE would like to remember, waiting on the user's answer.
+    /// A preference RUDDER would like to remember, waiting on the user's answer.
     private(set) var pendingMemoryCandidate: MemoryCandidate?
     private(set) var storageError: String?
 

@@ -10,7 +10,7 @@
 	<array>
 		<dict>
 			<!--
-			  The text of a decision is sent to DECIDE's backend so it can be
+			  The text of a decision is sent to RUDDER's backend so it can be
 			  analysed. It is not linked to an identity and is not used for
 			  tracking. Decisions, memory and outcomes are stored on the device.
 			-->
