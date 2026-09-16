@@ -31,13 +31,15 @@ struct RudderShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: StartDecisionIntent(),
+            // A free-form String parameter can't be embedded inline in a phrase --
+            // App Intents' build-time metadata processor only allows AppEntity/AppEnum
+            // there ("Invalid parameter type", a real error caught by CI). `prompt`
+            // has no default, so App Intents asks "What are you deciding?" itself
+            // after the app opens -- one extra step versus a single utterance, but
+            // it still works with no further wiring needed.
             phrases: [
-                // Embeds the parameter so a single utterance -- "Ask Rudder should I
-                // take this job" -- fills `prompt` directly from speech. Without it,
-                // App Intents falls back to asking "What are you deciding?" after the
-                // app opens, which still works but costs an extra step.
-                "Ask \(.applicationName) \(\.$prompt)",
-                "Start a decision with \(.applicationName)"
+                "Start a decision with \(.applicationName)",
+                "Ask \(.applicationName) what to decide"
             ],
             shortTitle: "Start a Decision",
             systemImageName: "arrow.triangle.branch"
