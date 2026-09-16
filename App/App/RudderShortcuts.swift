@@ -7,11 +7,15 @@ import RudderFlow
 /// thing this intent touches: it cannot reach into the view hierarchy directly
 /// since it runs out-of-process from SwiftUI.
 struct StartDecisionIntent: AppIntent {
-    static var title: LocalizedStringResource = "Start a Decision"
-    static var description = IntentDescription(
+    // `let`, not `var`: under Swift 6 strict concurrency a stored, mutable
+    // `static var` is flagged as unsafe shared global state even for Sendable
+    // types. These are all `{ get }`-only AppIntent requirements, so `let`
+    // satisfies the protocol and removes the warning-as-error entirely.
+    static let title: LocalizedStringResource = "Start a Decision"
+    static let description = IntentDescription(
         "Tells Rudder what you're deciding so it can start researching right away."
     )
-    static var openAppWhenRun: Bool = true
+    static let openAppWhenRun: Bool = true
 
     @Parameter(title: "What are you deciding?")
     var prompt: String
