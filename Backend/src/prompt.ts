@@ -8,7 +8,7 @@ import type { Budget } from "./budget.js";
  * Kept as one stable string so it caches well: everything that varies per
  * request goes in the user message, after the cached prefix.
  */
-export const SYSTEM_PROMPT = `You are the analysis engine behind DECIDE, an app that helps one person make one decision well.
+export const SYSTEM_PROMPT = `You are the analysis engine behind RUDDER, an app that helps one person make one decision well.
 
 Your job is to do the work so the user does not have to. You are not a chatbot, and you are not an oracle.
 
@@ -73,7 +73,7 @@ export function buildUserMessage(request: AnalysisRequest, budget: Budget, resea
 
   if (request.knownPreferences.length > 0) {
     parts.push(
-      "WHAT DECIDE HAS LEARNED ABOUT THEM (they approved storing this; do not ask about it again)\n" +
+      "WHAT RUDDER HAS LEARNED ABOUT THEM (they approved storing this; do not ask about it again)\n" +
         request.knownPreferences.map((preference) => `- ${preference}`).join("\n")
     );
   }

@@ -1,7 +1,7 @@
 #if DEBUG
 import Foundation
-import DecideCore
-import DecideFlow
+import RudderCore
+import RudderFlow
 
 /// Test-only scaffolding, compiled out of Release entirely.
 ///
@@ -13,10 +13,10 @@ import DecideFlow
 /// What it replaces is exactly one thing: the network call. Everything the user
 /// would see is produced by the same code that runs in production. There is no
 /// switch, flag or build setting that reaches this in a shipping build; the
-/// whole file is inside `#if DEBUG`, and `Tests/DecideAppTests` asserts that.
+/// whole file is inside `#if DEBUG`, and `Tests/RudderAppTests` asserts that.
 enum UITestHarness {
-    static let scenarioArgument = "-DecideUITestScenario"
-    static let resetArgument = "-DecideUITestResetStore"
+    static let scenarioArgument = "-RudderUITestScenario"
+    static let resetArgument = "-RudderUITestResetStore"
 
     enum Scenario: String {
         /// Nothing worth asking: straight to a Strong recommendation.
@@ -67,10 +67,10 @@ private struct ScriptedAnalysisService: DecisionAnalysisService {
 
         switch scenario {
         case .offline:
-            throw DecideServiceError.offline
+            throw RudderServiceError.offline
 
         case .invalidResponse:
-            throw DecideServiceError.invalidResponse
+            throw RudderServiceError.invalidResponse
 
         case .oneQuestion where request.answers.isEmpty:
             return try AIResponseValidator.validate(Self.askingResponse())

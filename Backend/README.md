@@ -1,4 +1,4 @@
-# DECIDE backend
+# RUDDER backend
 
 One endpoint. It exists so the iPhone app never has to hold a model provider
 credential, and so the cost of a decision can be controlled somewhere the user
@@ -43,7 +43,7 @@ npm test                 # 54 tests, no network, no spend
 npm run build && npm start
 ```
 
-The app expects `DecideAPIBaseURL` (in `Config/Shared.xcconfig`) to point at this
+The app expects `RudderAPIBaseURL` (in `Config/Shared.xcconfig`) to point at this
 service over HTTPS. Anything that is not https is ignored by the app.
 
 ## Deploying
@@ -144,7 +144,7 @@ platform-as-a-service that terminates HTTPS for you — is enough.
    `Config/Shared.xcconfig` to the deployed hostname only (e.g.
    `api.example.com`, no scheme, no path) — `DECIDE_API_BASE_URL` assembles
    the `https://` prefix around it, and `AppConfiguration.swift` reads the
-   result as `DecideAPIBaseURL`. An empty or non-HTTPS value is treated as
+   result as `RudderAPIBaseURL`. An empty or non-HTTPS value is treated as
    "not configured" rather than crashing.
 10. **Deployment-specific security checks.** Confirm: environment variables
     are only ever set through the platform's secret mechanism, never appear
@@ -283,8 +283,8 @@ itself rather than by the instructions.
 ## The contract
 
 `src/schema.ts` mirrors `AIDecisionResponse` in
-`Packages/DecideKit/Sources/DecideCore/AI/AIContract.swift`. They are kept honest
+`Packages/RudderKit/Sources/RudderCore/AI/AIContract.swift`. They are kept honest
 by a test on each side: the backend's contract test writes a real response to
-`Packages/DecideKit/Tests/DecideCoreTests/Fixtures/backend_contract.json`, and
+`Packages/RudderKit/Tests/RudderCoreTests/Fixtures/backend_contract.json`, and
 the Swift suite decodes and validates that same file. Break either side and both
 suites fail.

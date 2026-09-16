@@ -7,10 +7,10 @@ Connect exactly:
 
 | Product | Identifier | Duration |
 |---|---|---|
-| DECIDE Pro Monthly | `com.decide.app.pro.monthly` | 1 month |
-| DECIDE Pro Annual | `com.decide.app.pro.annual` | 1 year |
+| RUDDER Pro Monthly | `com.rudder.app.pro.monthly` | 1 month |
+| RUDDER Pro Annual | `com.rudder.app.pro.annual` | 1 year |
 
-Both belong to one subscription group (**DECIDE Pro**) so a user can move between
+Both belong to one subscription group (**RUDDER Pro**) so a user can move between
 them without holding two subscriptions.
 
 ## Pricing
@@ -55,7 +55,7 @@ a countdown or a scarcity claim, and should not grow one.
 
 ## Local testing
 
-`Config/Decide.storekit` mirrors the two products and is wired into the shared
+`Config/Rudder.storekit` mirrors the two products and is wired into the shared
 scheme, so Run and Test exercise purchase, restore, cancellation and expiry in the
 simulator without App Store Connect. Entitlement is always read back from
 StoreKit — there is no debug switch that grants Pro, by design.

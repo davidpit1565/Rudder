@@ -1,6 +1,6 @@
 import SwiftUI
 import Foundation
-import DecideCore
+import RudderCore
 
 /// A decision from history: what was decided, what was chosen, how it went.
 struct DecisionDetailsView: View {
@@ -19,7 +19,7 @@ struct DecisionDetailsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: DecideSpacing.l) {
+            VStack(alignment: .leading, spacing: RudderSpacing.l) {
                 summary
                 whatYouToldMe
                 outcomeSection
@@ -33,11 +33,11 @@ struct DecisionDetailsView: View {
                 } label: {
                     HStack {
                         Text("See full analysis")
-                            .font(DecideFont.callout.weight(.medium))
+                            .font(RudderFont.callout.weight(.medium))
                         Image(systemName: "chevron.right").font(.caption.weight(.semibold))
                     }
-                    .foregroundStyle(DecideColor.accent)
-                    .frame(maxWidth: .infinity, minHeight: DecideSpacing.minimumTouchTarget, alignment: .leading)
+                    .foregroundStyle(RudderColor.accent)
+                    .frame(maxWidth: .infinity, minHeight: RudderSpacing.minimumTouchTarget, alignment: .leading)
                     .contentShape(Rectangle())
                 }
 
@@ -45,14 +45,14 @@ struct DecisionDetailsView: View {
                     showingDeleteConfirmation = true
                 } label: {
                     Text("Delete this decision")
-                        .font(DecideFont.callout)
-                        .frame(maxWidth: .infinity, minHeight: DecideSpacing.minimumTouchTarget)
+                        .font(RudderFont.callout)
+                        .frame(maxWidth: .infinity, minHeight: RudderSpacing.minimumTouchTarget)
                 }
             }
             .screenPadding()
-            .padding(.vertical, DecideSpacing.m)
+            .padding(.vertical, RudderSpacing.m)
         }
-        .background(DecideColor.background)
+        .background(RudderColor.background)
         .navigationTitle(current.title)
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(
@@ -83,22 +83,22 @@ struct DecisionDetailsView: View {
     }
 
     private var summary: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.m) {
-            VStack(alignment: .leading, spacing: DecideSpacing.xs) {
+        VStack(alignment: .leading, spacing: RudderSpacing.m) {
+            VStack(alignment: .leading, spacing: RudderSpacing.xs) {
                 Text(current.chosenOption != nil ? "You chose" : "I recommended")
-                    .font(DecideFont.footnote.weight(.medium))
-                    .foregroundStyle(DecideColor.tertiaryText)
+                    .font(RudderFont.footnote.weight(.medium))
+                    .foregroundStyle(RudderColor.tertiaryText)
                 Text(current.chosenOption?.name ?? current.result.recommendedOption?.name ?? "No clear winner")
-                    .font(DecideFont.title)
-                    .foregroundStyle(DecideColor.primaryText)
+                    .font(RudderFont.title)
+                    .foregroundStyle(RudderColor.primaryText)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(current.createdAt.formatted(.dateTime.month(.wide).day().year()))
-                    .font(DecideFont.footnote)
-                    .foregroundStyle(DecideColor.tertiaryText)
+                    .font(RudderFont.footnote)
+                    .foregroundStyle(RudderColor.tertiaryText)
             }
             .accessibilityElement(children: .combine)
 
-            DecideCard {
+            RudderCard {
                 StrengthBadge(strength: current.result.strength, showsExplanation: true)
             }
 
@@ -109,44 +109,44 @@ struct DecisionDetailsView: View {
         }
     }
 
-    /// What DECIDE understood, and the two ways to put it right. An old decision is
+    /// What RUDDER understood, and the two ways to put it right. An old decision is
     /// never rewritten in place — both routes create a new one and leave this intact.
     private var whatYouToldMe: some View {
-        DecideCard {
-            VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        RudderCard {
+            VStack(alignment: .leading, spacing: RudderSpacing.s) {
                 Text("What you told me")
-                    .font(DecideFont.footnote.weight(.medium))
-                    .foregroundStyle(DecideColor.tertiaryText)
+                    .font(RudderFont.footnote.weight(.medium))
+                    .foregroundStyle(RudderColor.tertiaryText)
 
                 Text(current.result.understanding.restatement)
-                    .font(DecideFont.callout)
-                    .foregroundStyle(DecideColor.primaryText)
+                    .font(RudderFont.callout)
+                    .foregroundStyle(RudderColor.primaryText)
                     .fixedSize(horizontal: false, vertical: true)
 
                 if !current.result.understanding.whatMatters.isEmpty {
                     Text(current.result.understanding.whatMatters.joined(separator: " · "))
-                        .font(DecideFont.footnote)
-                        .foregroundStyle(DecideColor.secondaryText)
+                        .font(RudderFont.footnote)
+                        .foregroundStyle(RudderColor.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Divider().overlay(DecideColor.separator)
+                Divider().overlay(RudderColor.separator)
 
                 Text(
                     current.shouldReview
                         ? "Enough time has passed that the information behind this could be out of date."
                         : "Not quite right, or something has changed?"
                 )
-                .font(DecideFont.footnote)
-                .foregroundStyle(current.shouldReview ? DecideColor.moderate : DecideColor.secondaryText)
+                .font(RudderFont.footnote)
+                .foregroundStyle(current.shouldReview ? RudderColor.moderate : RudderColor.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
                 SecondaryButton(title: "Update this decision") {
                     newDecision = ActiveDecision(prompt: current.prompt)
                 }
                 Button("Start a different decision") { dismiss() }
-                    .font(DecideFont.footnote)
-                    .frame(maxWidth: .infinity, minHeight: DecideSpacing.minimumTouchTarget)
+                    .font(RudderFont.footnote)
+                    .frame(maxWidth: .infinity, minHeight: RudderSpacing.minimumTouchTarget)
             }
         }
     }
@@ -154,28 +154,28 @@ struct DecisionDetailsView: View {
     @ViewBuilder
     private var outcomeSection: some View {
         if let outcome = current.outcome {
-            DecideCard {
-                VStack(alignment: .leading, spacing: DecideSpacing.xs) {
+            RudderCard {
+                VStack(alignment: .leading, spacing: RudderSpacing.xs) {
                     Text("How it went")
-                        .font(DecideFont.footnote.weight(.medium))
-                        .foregroundStyle(DecideColor.tertiaryText)
+                        .font(RudderFont.footnote.weight(.medium))
+                        .foregroundStyle(RudderColor.tertiaryText)
                     Text(outcomeLabel(outcome.rating))
-                        .font(DecideFont.callout.weight(.medium))
-                        .foregroundStyle(DecideColor.primaryText)
+                        .font(RudderFont.callout.weight(.medium))
+                        .foregroundStyle(RudderColor.primaryText)
                     if let note = outcome.note, !note.isEmpty {
                         Text(note)
-                            .font(DecideFont.footnote)
-                            .foregroundStyle(DecideColor.secondaryText)
+                            .font(RudderFont.footnote)
+                            .foregroundStyle(RudderColor.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
         } else if current.chosenOptionID != nil, current.isReadyForOutcome {
-            DecideCard {
-                VStack(alignment: .leading, spacing: DecideSpacing.s) {
+            RudderCard {
+                VStack(alignment: .leading, spacing: RudderSpacing.s) {
                     Text("How did it go?")
-                        .font(DecideFont.headline)
-                        .foregroundStyle(DecideColor.primaryText)
+                        .font(RudderFont.headline)
+                        .foregroundStyle(RudderColor.primaryText)
                     SecondaryButton(title: "Tell me") { showingOutcome = true }
                 }
             }
@@ -212,36 +212,36 @@ struct OutcomeSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: DecideSpacing.l) {
+                VStack(alignment: .leading, spacing: RudderSpacing.l) {
                     Text("How did it go?")
-                        .font(DecideFont.title)
-                        .foregroundStyle(DecideColor.primaryText)
+                        .font(RudderFont.title)
+                        .foregroundStyle(RudderColor.primaryText)
 
-                    VStack(spacing: DecideSpacing.s) {
+                    VStack(spacing: RudderSpacing.s) {
                         ratingButton(.great, title: "Great", symbol: "hand.thumbsup")
                         ratingButton(.mixed, title: "Mixed", symbol: "equal.circle")
                         ratingButton(.notGreat, title: "Not great", symbol: "hand.thumbsdown")
                     }
 
                     if rating == .notGreat || rating == .mixed {
-                        VStack(alignment: .leading, spacing: DecideSpacing.xs) {
+                        VStack(alignment: .leading, spacing: RudderSpacing.xs) {
                             Text("What went wrong? (optional)")
-                                .font(DecideFont.footnote)
-                                .foregroundStyle(DecideColor.secondaryText)
+                                .font(RudderFont.footnote)
+                                .foregroundStyle(RudderColor.secondaryText)
                             TextField("Optional", text: $note, axis: .vertical)
-                                .font(DecideFont.body)
+                                .font(RudderFont.body)
                                 .lineLimit(2...5)
-                                .padding(DecideSpacing.m)
-                                .background(DecideColor.surface)
-                                .clipShape(RoundedRectangle(cornerRadius: DecideSpacing.cornerRadius, style: .continuous))
+                                .padding(RudderSpacing.m)
+                                .background(RudderColor.surface)
+                                .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous))
                         }
                     }
                 }
                 .screenPadding()
-                .padding(.vertical, DecideSpacing.m)
+                .padding(.vertical, RudderSpacing.m)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(DecideColor.background)
+            .background(RudderColor.background)
             .navigationTitle(record.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -255,7 +255,7 @@ struct OutcomeSheet: View {
                     onSubmit(Outcome(rating: rating, note: note.isEmpty ? nil : note))
                 }
                 .screenPadding()
-                .padding(.vertical, DecideSpacing.s)
+                .padding(.vertical, RudderSpacing.s)
                 .background(.bar)
             }
         }
@@ -265,22 +265,22 @@ struct OutcomeSheet: View {
         Button {
             rating = value
         } label: {
-            HStack(spacing: DecideSpacing.m) {
+            HStack(spacing: RudderSpacing.m) {
                 Image(systemName: symbol)
-                Text(title).font(DecideFont.body)
+                Text(title).font(RudderFont.body)
                 Spacer()
                 if rating == value {
-                    Image(systemName: "checkmark").foregroundStyle(DecideColor.accent)
+                    Image(systemName: "checkmark").foregroundStyle(RudderColor.accent)
                 }
             }
-            .foregroundStyle(DecideColor.primaryText)
-            .frame(maxWidth: .infinity, minHeight: DecideSpacing.minimumTouchTarget, alignment: .leading)
-            .padding(.horizontal, DecideSpacing.m)
-            .background(DecideColor.surface)
-            .clipShape(RoundedRectangle(cornerRadius: DecideSpacing.cornerRadius, style: .continuous))
+            .foregroundStyle(RudderColor.primaryText)
+            .frame(maxWidth: .infinity, minHeight: RudderSpacing.minimumTouchTarget, alignment: .leading)
+            .padding(.horizontal, RudderSpacing.m)
+            .background(RudderColor.surface)
+            .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: DecideSpacing.cornerRadius, style: .continuous)
-                    .stroke(rating == value ? DecideColor.accent : DecideColor.separator, lineWidth: rating == value ? 1.5 : 0.5)
+                RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous)
+                    .stroke(rating == value ? RudderColor.accent : RudderColor.separator, lineWidth: rating == value ? 1.5 : 0.5)
             )
         }
         .buttonStyle(.plain)

@@ -1,9 +1,9 @@
 import SwiftUI
 import Foundation
-import DecideCore
-import DecideFlow
+import RudderCore
+import RudderFlow
 
-/// What DECIDE knows, and how to make it forget. No account, no profile to fill in.
+/// What RUDDER knows, and how to make it forget. No account, no profile to fill in.
 struct ProfileView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var paywallContext: PaywallView.Context?
@@ -28,7 +28,7 @@ struct ProfileView: View {
 
         var message: String {
             switch self {
-            case .memory: return "Every preference DECIDE has learned is removed. Your decisions stay."
+            case .memory: return "Every preference RUDDER has learned is removed. Your decisions stay."
             case .decisions: return "Every saved decision and its analysis is removed. This can't be undone."
             case .outcomes: return "Every 'how did it go' answer is removed. Your decisions stay."
             case .everything: return "Decisions, memory and outcomes are all removed from this device. This can't be undone."
@@ -39,16 +39,16 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: DecideSpacing.xl) {
+                VStack(alignment: .leading, spacing: RudderSpacing.xl) {
                     subscriptionSection
                     memorySection
                     dataSection
                     aboutSection
                 }
                 .screenPadding()
-                .padding(.vertical, DecideSpacing.m)
+                .padding(.vertical, RudderSpacing.m)
             }
-            .background(DecideColor.background)
+            .background(RudderColor.background)
             .navigationTitle("Profile")
             .sheet(item: $paywallContext) { context in
                 PaywallView(context: context)
@@ -72,57 +72,57 @@ struct ProfileView: View {
     // MARK: Sections
 
     private var subscriptionSection: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        VStack(alignment: .leading, spacing: RudderSpacing.s) {
             SectionHeader(title: "Your plan")
-            DecideCard {
-                VStack(alignment: .leading, spacing: DecideSpacing.s) {
+            RudderCard {
+                VStack(alignment: .leading, spacing: RudderSpacing.s) {
                     switch environment.subscriptions.entitlement {
                     case .unknown, .checking:
-                        HStack(spacing: DecideSpacing.s) {
+                        HStack(spacing: RudderSpacing.s) {
                             ProgressView()
                             Text("Checking your subscription…")
-                                .font(DecideFont.callout)
-                                .foregroundStyle(DecideColor.secondaryText)
+                                .font(RudderFont.callout)
+                                .foregroundStyle(RudderColor.secondaryText)
                         }
                     case .notSubscribed:
                         Text("Free")
-                            .font(DecideFont.headline)
-                            .foregroundStyle(DecideColor.primaryText)
+                            .font(RudderFont.headline)
+                            .foregroundStyle(RudderColor.primaryText)
                         Text("\(FeatureAccess.freeDeepDecisionsPerMonth) deep decisions a month, and your last \(FeatureAccess.freeHistoryLimit) decisions.")
-                            .font(DecideFont.footnote)
-                            .foregroundStyle(DecideColor.secondaryText)
+                            .font(RudderFont.footnote)
+                            .foregroundStyle(RudderColor.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                         SecondaryButton(title: "See Pro") { paywallContext = .profile }
                     case .subscribed(let expires, let isInGracePeriod):
                         Text("Pro")
-                            .font(DecideFont.headline)
-                            .foregroundStyle(DecideColor.primaryText)
+                            .font(RudderFont.headline)
+                            .foregroundStyle(RudderColor.primaryText)
                         if isInGracePeriod {
                             Text("There's a problem with your billing. Access continues while Apple retries.")
-                                .font(DecideFont.footnote)
-                                .foregroundStyle(DecideColor.moderate)
+                                .font(RudderFont.footnote)
+                                .foregroundStyle(RudderColor.moderate)
                                 .fixedSize(horizontal: false, vertical: true)
                         } else if let expires {
                             Text("Renews \(expires.formatted(.dateTime.month(.abbreviated).day().year()))")
-                                .font(DecideFont.footnote)
-                                .foregroundStyle(DecideColor.secondaryText)
+                                .font(RudderFont.footnote)
+                                .foregroundStyle(RudderColor.secondaryText)
                         }
                     case .billingRetry(let expires):
                         Text("Pro — billing issue")
-                            .font(DecideFont.headline)
-                            .foregroundStyle(DecideColor.primaryText)
+                            .font(RudderFont.headline)
+                            .foregroundStyle(RudderColor.primaryText)
                         Text("Apple couldn't take the payment\(expires.map { ". Access continues until \($0.formatted(.dateTime.month(.abbreviated).day()))" } ?? ""). You can fix this in your Apple Account settings.")
-                            .font(DecideFont.footnote)
-                            .foregroundStyle(DecideColor.moderate)
+                            .font(RudderFont.footnote)
+                            .foregroundStyle(RudderColor.moderate)
                             .fixedSize(horizontal: false, vertical: true)
                     case .expired(let date):
                         Text("Pro has ended")
-                            .font(DecideFont.headline)
-                            .foregroundStyle(DecideColor.primaryText)
+                            .font(RudderFont.headline)
+                            .foregroundStyle(RudderColor.primaryText)
                         if let date {
                             Text("Ended \(date.formatted(.dateTime.month(.abbreviated).day().year())). Your decisions are still here.")
-                                .font(DecideFont.footnote)
-                                .foregroundStyle(DecideColor.secondaryText)
+                                .font(RudderFont.footnote)
+                                .foregroundStyle(RudderColor.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         SecondaryButton(title: "See Pro") { paywallContext = .profile }
@@ -132,8 +132,8 @@ struct ProfileView: View {
                         Button("Restore purchases") {
                             Task { _ = await environment.subscriptions.restorePurchases() }
                         }
-                        .font(DecideFont.footnote)
-                        .frame(minHeight: DecideSpacing.minimumTouchTarget)
+                        .font(RudderFont.footnote)
+                        .frame(minHeight: RudderSpacing.minimumTouchTarget)
                     }
                 }
             }
@@ -141,29 +141,29 @@ struct ProfileView: View {
     }
 
     private var memorySection: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        VStack(alignment: .leading, spacing: RudderSpacing.s) {
             SectionHeader(
                 title: "Decision Memory",
-                subtitle: "Preferences DECIDE noticed in decisions you actually made. Nothing is stored without your say-so."
+                subtitle: "Preferences RUDDER noticed in decisions you actually made. Nothing is stored without your say-so."
             )
 
             if !environment.isPro {
-                DecideCard {
-                    VStack(alignment: .leading, spacing: DecideSpacing.s) {
+                RudderCard {
+                    VStack(alignment: .leading, spacing: RudderSpacing.s) {
                         Text("Decision Memory is part of Pro.")
-                            .font(DecideFont.callout)
-                            .foregroundStyle(DecideColor.primaryText)
+                            .font(RudderFont.callout)
+                            .foregroundStyle(RudderColor.primaryText)
                         SecondaryButton(title: "See Pro") { paywallContext = .memory }
                     }
                 }
             } else if environment.memory.isEmpty {
                 EmptyStateView(
                     title: "Nothing learned yet.",
-                    message: "After a few decisions, DECIDE may notice a pattern and ask whether to remember it.",
+                    message: "After a few decisions, RUDDER may notice a pattern and ask whether to remember it.",
                     systemImage: "brain"
                 )
             } else {
-                VStack(spacing: DecideSpacing.s) {
+                VStack(spacing: RudderSpacing.s) {
                     ForEach(environment.memory) { entry in
                         MemoryRow(entry: entry)
                     }
@@ -173,25 +173,25 @@ struct ProfileView: View {
     }
 
     private var dataSection: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        VStack(alignment: .leading, spacing: RudderSpacing.s) {
             SectionHeader(
                 title: "Your data",
                 subtitle: "Everything is stored on this device. Decisions, memory and outcomes are kept separately, and can be deleted separately."
             )
-            DecideCard {
+            RudderCard {
                 VStack(alignment: .leading, spacing: 0) {
                     dataRow("Delete all Decision Memory", isEnabled: !environment.memory.isEmpty) {
                         confirmation = .memory
                     }
-                    Divider().overlay(DecideColor.separator)
+                    Divider().overlay(RudderColor.separator)
                     dataRow("Delete all outcomes", isEnabled: environment.decisions.contains { $0.outcome != nil }) {
                         confirmation = .outcomes
                     }
-                    Divider().overlay(DecideColor.separator)
+                    Divider().overlay(RudderColor.separator)
                     dataRow("Delete all decisions", isEnabled: !environment.decisions.isEmpty) {
                         confirmation = .decisions
                     }
-                    Divider().overlay(DecideColor.separator)
+                    Divider().overlay(RudderColor.separator)
                     dataRow("Delete everything", isEnabled: !environment.decisions.isEmpty || !environment.memory.isEmpty) {
                         confirmation = .everything
                     }
@@ -201,33 +201,33 @@ struct ProfileView: View {
     }
 
     private var aboutSection: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        VStack(alignment: .leading, spacing: RudderSpacing.s) {
             SectionHeader(title: "About")
-            DecideCard {
-                VStack(alignment: .leading, spacing: DecideSpacing.s) {
+            RudderCard {
+                VStack(alignment: .leading, spacing: RudderSpacing.s) {
                     if let url = environment.configuration.privacyPolicyURL {
                         Link("Privacy Policy", destination: url)
-                            .font(DecideFont.callout)
-                            .frame(minHeight: DecideSpacing.minimumTouchTarget)
+                            .font(RudderFont.callout)
+                            .frame(minHeight: RudderSpacing.minimumTouchTarget)
                     }
                     if let url = environment.configuration.termsURL {
                         Link("Terms of Use", destination: url)
-                            .font(DecideFont.callout)
-                            .frame(minHeight: DecideSpacing.minimumTouchTarget)
+                            .font(RudderFont.callout)
+                            .frame(minHeight: RudderSpacing.minimumTouchTarget)
                     }
                     if let url = environment.configuration.supportURL {
                         Link("Support", destination: url)
-                            .font(DecideFont.callout)
-                            .frame(minHeight: DecideSpacing.minimumTouchTarget)
+                            .font(RudderFont.callout)
+                            .frame(minHeight: RudderSpacing.minimumTouchTarget)
                     }
-                    Text("DECIDE analyses decisions with the help of an AI model. It can be wrong, and it tells you how confident the analysis is rather than pretending to be certain. The final decision is always yours.")
-                        .font(DecideFont.footnote)
-                        .foregroundStyle(DecideColor.secondaryText)
+                    Text("RUDDER analyses decisions with the help of an AI model. It can be wrong, and it tells you how confident the analysis is rather than pretending to be certain. The final decision is always yours.")
+                        .font(RudderFont.footnote)
+                        .foregroundStyle(RudderColor.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                     if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
                         Text("Version \(version)")
-                            .font(DecideFont.caption)
-                            .foregroundStyle(DecideColor.tertiaryText)
+                            .font(RudderFont.caption)
+                            .foregroundStyle(RudderColor.tertiaryText)
                     }
                 }
             }
@@ -238,11 +238,11 @@ struct ProfileView: View {
         Button(action: action) {
             HStack {
                 Text(title)
-                    .font(DecideFont.callout)
-                    .foregroundStyle(isEnabled ? DecideColor.unclear : DecideColor.tertiaryText)
+                    .font(RudderFont.callout)
+                    .foregroundStyle(isEnabled ? RudderColor.unclear : RudderColor.tertiaryText)
                 Spacer()
             }
-            .frame(maxWidth: .infinity, minHeight: DecideSpacing.minimumTouchTarget, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: RudderSpacing.minimumTouchTarget, alignment: .leading)
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
@@ -263,18 +263,18 @@ private struct MemoryRow: View {
     @Environment(AppEnvironment.self) private var environment
 
     var body: some View {
-        DecideCard {
-            VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        RudderCard {
+            VStack(alignment: .leading, spacing: RudderSpacing.s) {
                 Text(entry.statement)
-                    .font(DecideFont.callout)
-                    .foregroundStyle(DecideColor.primaryText)
+                    .font(RudderFont.callout)
+                    .foregroundStyle(RudderColor.primaryText)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text("Noticed in \(entry.evidenceCount) of your decisions")
-                    .font(DecideFont.caption)
-                    .foregroundStyle(DecideColor.tertiaryText)
+                    .font(RudderFont.caption)
+                    .foregroundStyle(RudderColor.tertiaryText)
 
-                HStack(spacing: DecideSpacing.m) {
+                HStack(spacing: RudderSpacing.m) {
                     Toggle(
                         "Use this",
                         isOn: Binding(
@@ -282,14 +282,14 @@ private struct MemoryRow: View {
                             set: { environment.setMemoryEnabled($0, for: entry) }
                         )
                     )
-                    .font(DecideFont.footnote)
+                    .font(RudderFont.footnote)
                     .toggleStyle(.switch)
 
                     Button("Remove", role: .destructive) {
                         environment.deleteMemory(entry)
                     }
-                    .font(DecideFont.footnote)
-                    .frame(minHeight: DecideSpacing.minimumTouchTarget)
+                    .font(RudderFont.footnote)
+                    .frame(minHeight: RudderSpacing.minimumTouchTarget)
                 }
             }
         }
@@ -303,29 +303,29 @@ struct MemoryConsentSheet: View {
     let onDecline: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.l) {
-            VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        VStack(alignment: .leading, spacing: RudderSpacing.l) {
+            VStack(alignment: .leading, spacing: RudderSpacing.s) {
                 Text("I noticed something")
-                    .font(DecideFont.footnote.weight(.medium))
-                    .foregroundStyle(DecideColor.tertiaryText)
+                    .font(RudderFont.footnote.weight(.medium))
+                    .foregroundStyle(RudderColor.tertiaryText)
                 Text(candidate.statement)
-                    .font(DecideFont.title)
-                    .foregroundStyle(DecideColor.primaryText)
+                    .font(RudderFont.title)
+                    .foregroundStyle(RudderColor.primaryText)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Want DECIDE to use this in future decisions? You can change or delete it at any time.")
-                    .font(DecideFont.callout)
-                    .foregroundStyle(DecideColor.secondaryText)
+                Text("Want RUDDER to use this in future decisions? You can change or delete it at any time.")
+                    .font(RudderFont.callout)
+                    .foregroundStyle(RudderColor.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
 
             PrimaryButton(title: "Remember", action: onRemember)
             Button("Not now", action: onDecline)
-                .font(DecideFont.footnote)
-                .frame(maxWidth: .infinity, minHeight: DecideSpacing.minimumTouchTarget)
+                .font(RudderFont.footnote)
+                .frame(maxWidth: .infinity, minHeight: RudderSpacing.minimumTouchTarget)
         }
         .screenPadding()
-        .padding(.vertical, DecideSpacing.l)
+        .padding(.vertical, RudderSpacing.l)
         .presentationDetents([.medium])
     }
 }

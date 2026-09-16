@@ -2,7 +2,7 @@ import SwiftUI
 import Foundation
 
 /// Three places, and no more: make a decision, look at past ones, manage what
-/// DECIDE knows about you.
+/// RUDDER knows about you.
 struct RootView: View {
     enum Tab: Hashable {
         case decide

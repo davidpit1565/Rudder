@@ -107,7 +107,7 @@ test("a full response serialises to the shape the iPhone app decodes", () => {
   const retrieved = new Map([["https://www.apple.com/macbook-air/specs/", "Apple technical specifications"]]);
   const wire = toWireResponse(response, request, budgetFor(request), retrieved);
 
-  // Exactly the keys AIDecisionResponse decodes in DecideCore.
+  // Exactly the keys AIDecisionResponse decodes in RudderCore.
   assert.deepEqual(Object.keys(wire).sort(), [
     "assumptions", "category", "complexity", "conflicts", "criteria",
     "decisionStatus", "options", "preliminaryRecommendation", "recommendation",
@@ -117,7 +117,7 @@ test("a full response serialises to the shape the iPhone app decodes", () => {
   assert.deepEqual(wire.options[0]!.scores, { portability: 0.95, performance: 0.62, price: 0.8 });
 
   // Written out so the Swift side decodes the same bytes this server produces.
-  const fixturePath = join(here, "../../../Packages/DecideKit/Tests/DecideCoreTests/Fixtures/backend_contract.json");
+  const fixturePath = join(here, "../../../Packages/RudderKit/Tests/RudderCoreTests/Fixtures/backend_contract.json");
   mkdirSync(dirname(fixturePath), { recursive: true });
   writeFileSync(fixturePath, JSON.stringify(wire, null, 2) + "\n");
 });

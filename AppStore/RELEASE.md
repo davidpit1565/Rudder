@@ -10,20 +10,20 @@ domain that only the account owner can provide.
    provisioning profiles are committed.
 
 2. **Bundle identifier**
-   `com.decide.app` is the placeholder in `Config/Shared.xcconfig`. Change it to
+   `com.rudder.app` is the placeholder in `Config/Shared.xcconfig`. Change it to
    one your team owns, in that one file, and register it in App Store Connect
    with **In-App Purchase** enabled.
 
 3. **Backend deployment**
    Deploy `Backend/` somewhere with TLS and set `ANTHROPIC_API_KEY` in its
-   environment. Then set `DECIDE_API_HOST` in `Config/Shared.xcconfig` to its
+   environment. Then set `RUDDER_API_HOST` in `Config/Shared.xcconfig` to its
    hostname — it ships empty. Until it is set, and for any value that is not
-   HTTPS, the app says "DECIDE isn't connected yet" rather than failing against a
+   HTTPS, the app says "RUDDER isn't connected yet" rather than failing against a
    host that does not exist.
 
 4. **Privacy policy, terms and support pages**
-   Publish all three, then set `DECIDE_PRIVACY_POLICY_HOST`, `DECIDE_TERMS_HOST`
-   and `DECIDE_SUPPORT_HOST` in `Config/Shared.xcconfig`. `AppStore/privacy.md`
+   Publish all three, then set `RUDDER_PRIVACY_POLICY_HOST`, `RUDDER_TERMS_HOST`
+   and `RUDDER_SUPPORT_HOST` in `Config/Shared.xcconfig`. `AppStore/privacy.md`
    lists what the policy has to cover. They ship empty, and the app hides a link
    it has no URL for rather than showing a dead one — but App Store Connect will
    not accept a submission without a privacy policy URL.
@@ -60,7 +60,7 @@ domain that only the account owner can provide.
 
 ## Before you archive
 
-- [ ] `cd Packages/DecideKit && swift test` — 142 tests
+- [ ] `cd Packages/RudderKit && swift test` — 142 tests
 - [ ] `cd Backend && npm test` — 54 tests
 - [ ] Product ▸ Test in Xcode — app-layer and UI tests on a simulator
 - [ ] Run once on a small device (iPhone SE) and a large one, in both appearances
@@ -68,7 +68,7 @@ domain that only the account owner can provide.
       buttons, no truncated recommendations
 - [ ] VoiceOver through Home → question → recommendation → choice
 - [ ] Airplane mode: a new decision explains itself; saved decisions still open
-- [ ] Buy, cancel and restore against `Config/Decide.storekit`
+- [ ] Buy, cancel and restore against `Config/Rudder.storekit`
 - [ ] Force-quit after saving a decision; reopen and confirm it is still there
 - [ ] Archive with the Release configuration and check Xcode's privacy report
 - [ ] Confirm the archived build points at the production API host

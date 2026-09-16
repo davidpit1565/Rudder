@@ -44,8 +44,8 @@ final class SubscriptionService {
     }
 
     enum ProductID {
-        static let monthly = "com.decide.app.pro.monthly"
-        static let annual = "com.decide.app.pro.annual"
+        static let monthly = "com.rudder.app.pro.monthly"
+        static let annual = "com.rudder.app.pro.annual"
         static let all = [monthly, annual]
     }
 

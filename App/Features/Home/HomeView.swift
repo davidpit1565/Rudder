@@ -1,7 +1,7 @@
 import SwiftUI
 import Foundation
-import DecideCore
-import DecideFlow
+import RudderCore
+import RudderFlow
 
 /// One question, one field, one button. The home screen is not a dashboard.
 struct HomeView: View {
@@ -23,7 +23,7 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: DecideSpacing.l) {
+                VStack(alignment: .leading, spacing: RudderSpacing.l) {
                     header
                     input
                     if !isInputFocused {
@@ -32,11 +32,11 @@ struct HomeView: View {
                     }
                 }
                 .screenPadding()
-                .padding(.top, DecideSpacing.m)
-                .padding(.bottom, DecideSpacing.xxl)
+                .padding(.top, RudderSpacing.m)
+                .padding(.bottom, RudderSpacing.xxl)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(DecideColor.background)
+            .background(RudderColor.background)
             .navigationTitle("Decide")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {
@@ -45,12 +45,12 @@ struct HomeView: View {
                     title: "Decide",
                     systemImage: "arrow.right",
                     isEnabled: canDecide,
-                    identifier: DecideID.startDecision
+                    identifier: RudderID.startDecision
                 ) {
                     startDecision()
                 }
                 .screenPadding()
-                .padding(.vertical, DecideSpacing.s)
+                .padding(.vertical, RudderSpacing.s)
                 .background(.bar)
             }
         }
@@ -70,40 +70,40 @@ struct HomeView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        VStack(alignment: .leading, spacing: RudderSpacing.s) {
             Text("What are you deciding?")
-                .font(DecideFont.display)
-                .foregroundStyle(DecideColor.primaryText)
+                .font(RudderFont.display)
+                .foregroundStyle(RudderColor.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Tell me what you're trying to figure out.")
-                .font(DecideFont.callout)
-                .foregroundStyle(DecideColor.secondaryText)
+                .font(RudderFont.callout)
+                .foregroundStyle(RudderColor.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
     }
 
     private var input: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        VStack(alignment: .leading, spacing: RudderSpacing.s) {
             TextField(
                 "I'm deciding between…",
                 text: $prompt,
                 axis: .vertical
             )
-            .font(DecideFont.body)
+            .font(RudderFont.body)
             .lineLimit(3...8)
             .textInputAutocapitalization(.sentences)
             .submitLabel(.done)
             .focused($isInputFocused)
-            .padding(DecideSpacing.m)
-            .background(DecideColor.surface)
-            .clipShape(RoundedRectangle(cornerRadius: DecideSpacing.cornerRadius, style: .continuous))
+            .padding(RudderSpacing.m)
+            .background(RudderColor.surface)
+            .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: DecideSpacing.cornerRadius, style: .continuous)
-                    .stroke(isInputFocused ? DecideColor.accent : DecideColor.separator, lineWidth: 1)
+                RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous)
+                    .stroke(isInputFocused ? RudderColor.accent : RudderColor.separator, lineWidth: 1)
             )
             .accessibilityLabel("What are you deciding?")
-            .accessibilityIdentifier(DecideID.decisionInput)
+            .accessibilityIdentifier(RudderID.decisionInput)
 
             if !isConnected {
                 InlineNotice(
@@ -115,10 +115,10 @@ struct HomeView: View {
     }
 
     private var examples: some View {
-        VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        VStack(alignment: .leading, spacing: RudderSpacing.s) {
             Text("For example")
-                .font(DecideFont.footnote.weight(.medium))
-                .foregroundStyle(DecideColor.tertiaryText)
+                .font(RudderFont.footnote.weight(.medium))
+                .foregroundStyle(RudderColor.tertiaryText)
 
             ForEach(Self.examplePrompts, id: \.self) { example in
                 Button {
@@ -127,18 +127,18 @@ struct HomeView: View {
                 } label: {
                     HStack {
                         Text(example)
-                            .font(DecideFont.callout)
-                            .foregroundStyle(DecideColor.primaryText)
+                            .font(RudderFont.callout)
+                            .foregroundStyle(RudderColor.primaryText)
                             .multilineTextAlignment(.leading)
-                        Spacer(minLength: DecideSpacing.s)
+                        Spacer(minLength: RudderSpacing.s)
                         Image(systemName: "arrow.up.left")
                             .font(.caption)
-                            .foregroundStyle(DecideColor.tertiaryText)
+                            .foregroundStyle(RudderColor.tertiaryText)
                     }
-                    .frame(minHeight: DecideSpacing.minimumTouchTarget)
-                    .padding(.horizontal, DecideSpacing.m)
-                    .background(DecideColor.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: DecideSpacing.s, style: .continuous))
+                    .frame(minHeight: RudderSpacing.minimumTouchTarget)
+                    .padding(.horizontal, RudderSpacing.m)
+                    .background(RudderColor.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.s, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("Uses this example as your decision")
@@ -150,16 +150,16 @@ struct HomeView: View {
     private var recentDecisions: some View {
         let recent = Array(environment.visibleDecisions.prefix(3))
 
-        VStack(alignment: .leading, spacing: DecideSpacing.s) {
+        VStack(alignment: .leading, spacing: RudderSpacing.s) {
             HStack {
                 Text("Recent decisions")
-                    .font(DecideFont.footnote.weight(.medium))
-                    .foregroundStyle(DecideColor.tertiaryText)
+                    .font(RudderFont.footnote.weight(.medium))
+                    .foregroundStyle(RudderColor.tertiaryText)
                 Spacer()
                 if !recent.isEmpty {
                     Button("See all", action: onSeeAllDecisions)
-                        .font(DecideFont.footnote)
-                        .frame(minHeight: DecideSpacing.minimumTouchTarget)
+                        .font(RudderFont.footnote)
+                        .frame(minHeight: RudderSpacing.minimumTouchTarget)
                 }
             }
 
@@ -177,7 +177,7 @@ struct HomeView: View {
                         DecisionRow(record: record)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier(DecideID.historyRow)
+                    .accessibilityIdentifier(RudderID.historyRow)
                 }
             }
         }
@@ -221,27 +221,27 @@ struct DecisionRow: View {
     }
 
     var body: some View {
-        DecideCard {
-            VStack(alignment: .leading, spacing: DecideSpacing.xs) {
+        RudderCard {
+            VStack(alignment: .leading, spacing: RudderSpacing.xs) {
                 Text(record.title)
-                    .font(DecideFont.callout.weight(.semibold))
-                    .foregroundStyle(DecideColor.primaryText)
+                    .font(RudderFont.callout.weight(.semibold))
+                    .foregroundStyle(RudderColor.primaryText)
                     .multilineTextAlignment(.leading)
 
-                HStack(spacing: DecideSpacing.s) {
+                HStack(spacing: RudderSpacing.s) {
                     Text(subtitle)
-                        .font(DecideFont.footnote)
-                        .foregroundStyle(DecideColor.secondaryText)
-                    Spacer(minLength: DecideSpacing.s)
+                        .font(RudderFont.footnote)
+                        .foregroundStyle(RudderColor.secondaryText)
+                    Spacer(minLength: RudderSpacing.s)
                     Text(record.createdAt.decideRelativeDescription)
-                        .font(DecideFont.footnote)
-                        .foregroundStyle(DecideColor.tertiaryText)
+                        .font(RudderFont.footnote)
+                        .foregroundStyle(RudderColor.tertiaryText)
                 }
 
                 if record.shouldReview {
                     Text("Things may have changed")
-                        .font(DecideFont.caption)
-                        .foregroundStyle(DecideColor.moderate)
+                        .font(RudderFont.caption)
+                        .foregroundStyle(RudderColor.moderate)
                 }
             }
         }
