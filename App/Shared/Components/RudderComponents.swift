@@ -285,6 +285,7 @@ extension View {
 enum RudderID {
     static let startDecision = "decide.start"
     static let decisionInput = "decide.input"
+    static let voiceInput = "decide.voiceInput"
     static let makeDecision = "decide.make"
     static let chooseSomethingElse = "decide.chooseOther"
     static let continueAfterQuestion = "decide.question.continue"

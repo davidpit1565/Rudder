@@ -40,6 +40,12 @@
 	<!-- The app uses only standard HTTPS, which is exempt from export compliance. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- Voice input on the home screen (App/Services/SpeechRecognizer.swift): both
+	     are requested together, only when the user taps the microphone button. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>RUDDER uses your microphone to turn speech into text when you tap the microphone button.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>RUDDER uses speech recognition to turn what you say into the text of your decision.</string>
 	<!--
 	  RUDDER's own backend. The app never holds a model provider key: it talks
 	  only to this endpoint, which keeps the credentials server-side.

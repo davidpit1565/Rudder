@@ -31,6 +31,7 @@
 		B659C317CD99507F82C67362 /* RudderFlow in Frameworks */ = {isa = PBXBuildFile; productRef = D4AAC8F343FD5B4ED32B3AA6 /* RudderFlow */; };
 		B8C1A13D88C7F57DA4CBADBA /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3422E089C01C33D7B7C4EC14 /* PaywallView.swift */; };
 		BD240AC1ED4FE36702C3DBB2 /* RecommendationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A218437E08E71944680822E /* RecommendationView.swift */; };
+		BDD8B87D7D31C58505D6DE1E /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B22797F3D4CA5AE1CD0BDE77 /* SpeechRecognizer.swift */; };
 		C08A70B4CA68421AED1E3E71 /* RudderComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F7CA84ADFCC3B3C9AE159B6 /* RudderComponents.swift */; };
 		C6BF5267C664610CECFCD300 /* RudderWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 589953070E7C9046B04E88BB /* RudderWidgetBundle.swift */; };
 		D50716B9F01402CD4E94C4A6 /* RudderFlow in Frameworks */ = {isa = PBXBuildFile; productRef = E5FD8D25D28A005B927A7DCA /* RudderFlow */; };
@@ -101,6 +102,7 @@
 		8F7CA84ADFCC3B3C9AE159B6 /* RudderComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RudderComponents.swift; sourceTree = "<group>"; };
 		907498C607F1070DE9CDBD4C /* SubscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService.swift; sourceTree = "<group>"; };
 		987339EC52A0C5B250644522 /* RudderShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RudderShortcuts.swift; sourceTree = "<group>"; };
+		B22797F3D4CA5AE1CD0BDE77 /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizer.swift; sourceTree = "<group>"; };
 		B306E494D0D420CC93DC8B57 /* WidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetBridge.swift; sourceTree = "<group>"; };
 		BC92AA826F25120E0B2A1306 /* DecisionFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecisionFlowView.swift; sourceTree = "<group>"; };
 		C973B1188B363232E4D5CC88 /* RudderUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RudderUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -181,6 +183,7 @@
 			children = (
 				ED5DF426E98B5358999EEDD7 /* PersistenceModels.swift */,
 				F112DAB7643C06571B0F5DC0 /* PersistenceService.swift */,
+				B22797F3D4CA5AE1CD0BDE77 /* SpeechRecognizer.swift */,
 				907498C607F1070DE9CDBD4C /* SubscriptionService.swift */,
 				79054BCDEBD80D42962A6C22 /* UITestHarness.swift */,
 				B306E494D0D420CC93DC8B57 /* WidgetBridge.swift */,
@@ -534,6 +537,7 @@
 				C08A70B4CA68421AED1E3E71 /* RudderComponents.swift in Sources */,
 				1206040E30E1A808B9F002FD /* RudderShortcuts.swift in Sources */,
 				393195DDC5B7142E561FADF5 /* RudderTheme.swift in Sources */,
+				BDD8B87D7D31C58505D6DE1E /* SpeechRecognizer.swift in Sources */,
 				EFB81D6D6C3BEA3FF877327F /* SubscriptionService.swift in Sources */,
 				4015C26264200C3D417C8F88 /* UITestHarness.swift in Sources */,
 				5BC5D53364AF79EDED0F208C /* WidgetBridge.swift in Sources */,
