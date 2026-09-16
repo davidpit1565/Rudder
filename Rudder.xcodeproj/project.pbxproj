@@ -18,20 +18,26 @@
 		393195DDC5B7142E561FADF5 /* RudderTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBCA3FBF51795940B98292CE /* RudderTheme.swift */; };
 		4015C26264200C3D417C8F88 /* UITestHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79054BCDEBD80D42962A6C22 /* UITestHarness.swift */; };
 		4224A539DCE76D86B8ADDCE6 /* RudderUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAE57F201BF565C9AF0CF4EA /* RudderUITests.swift */; };
+		429D2FF9C7FF1B77D813608D /* RudderCore in Frameworks */ = {isa = PBXBuildFile; productRef = 74CCD21F163DC206D5985774 /* RudderCore */; };
 		4C8F44EF557DAB0ECC551D40 /* PersistenceServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C959B0BD4C2EA15F24A61D7 /* PersistenceServiceTests.swift */; };
 		4D9BE34EA7F866E1024E3605 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FC170525F82A87D3CAE08BE /* ProfileView.swift */; };
+		5BC5D53364AF79EDED0F208C /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B306E494D0D420CC93DC8B57 /* WidgetBridge.swift */; };
 		638982C041B920B48FE60A42 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8E64B6EFC6C418936C2804 /* RootView.swift */; };
 		63FA111DDFEFCD744E7DCE7F /* DecisionDetailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EDDDF5A02C9F0F452BE9277 /* DecisionDetailsView.swift */; };
 		75CCF1272437CE7BD5752D44 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFB5EC4557070D2961A97323 /* AppEnvironment.swift */; };
 		85C05B353439F5665FB51B5B /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20CFBBE9E41FD0C86FD61988 /* HomeView.swift */; };
 		9163E5ABBA7F8C8F0327D3AB /* PersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F112DAB7643C06571B0F5DC0 /* PersistenceService.swift */; };
 		9306A4115F934433A11BFBD1 /* DecisionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 186B3CAFA3C552ECEF90EA4C /* DecisionsView.swift */; };
+		B659C317CD99507F82C67362 /* RudderFlow in Frameworks */ = {isa = PBXBuildFile; productRef = D4AAC8F343FD5B4ED32B3AA6 /* RudderFlow */; };
 		B8C1A13D88C7F57DA4CBADBA /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3422E089C01C33D7B7C4EC14 /* PaywallView.swift */; };
 		BD240AC1ED4FE36702C3DBB2 /* RecommendationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A218437E08E71944680822E /* RecommendationView.swift */; };
 		C08A70B4CA68421AED1E3E71 /* RudderComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F7CA84ADFCC3B3C9AE159B6 /* RudderComponents.swift */; };
+		C6BF5267C664610CECFCD300 /* RudderWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 589953070E7C9046B04E88BB /* RudderWidgetBundle.swift */; };
 		D50716B9F01402CD4E94C4A6 /* RudderFlow in Frameworks */ = {isa = PBXBuildFile; productRef = E5FD8D25D28A005B927A7DCA /* RudderFlow */; };
 		DAE01BFE94A84AF84F8F33C8 /* DecisionFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC92AA826F25120E0B2A1306 /* DecisionFlowView.swift */; };
 		DD13FEA0F23184BF1EC611DE /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 42A590323396990BCBAA203F /* PrivacyInfo.xcprivacy */; };
+		E33B81E37905A9239F4B5147 /* RudderWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 82EC42C5141FF55D338F2DF3 /* RudderWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E58066EFB77C931693A8DD95 /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B306E494D0D420CC93DC8B57 /* WidgetBridge.swift */; };
 		EFB81D6D6C3BEA3FF877327F /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 907498C607F1070DE9CDBD4C /* SubscriptionService.swift */; };
 		F23200FD98BF76BF59388420 /* PersistenceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5DF426E98B5358999EEDD7 /* PersistenceModels.swift */; };
 		F781F5D7C3A1DAEC6967EB4C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D99585940BDA9BE08706266D /* Assets.xcassets */; };
@@ -45,6 +51,13 @@
 			remoteGlobalIDString = 5E53540D7499EDDBBC72960B;
 			remoteInfo = Rudder;
 		};
+		2D4D70B211E8C027D3B2BDF8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FACA6BF13F559F951850C77B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 63A17717F18E869A7E82070B;
+			remoteInfo = RudderWidgetExtension;
+		};
 		B092A0C23B6BF68B23E0EA1B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = FACA6BF13F559F951850C77B /* Project object */;
@@ -53,6 +66,20 @@
 			remoteInfo = Rudder;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		74A3CB2671C815F2089DC9DE /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				E33B81E37905A9239F4B5147 /* RudderWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		01E2A801CA49EBAF38EDF27D /* RudderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RudderApp.swift; sourceTree = "<group>"; };
@@ -67,11 +94,14 @@
 		3A218437E08E71944680822E /* RecommendationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecommendationView.swift; sourceTree = "<group>"; };
 		42A590323396990BCBAA203F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		450395F033EAD537FB1B38EE /* RudderKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RudderKit; path = Packages/RudderKit; sourceTree = SOURCE_ROOT; };
+		589953070E7C9046B04E88BB /* RudderWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RudderWidgetBundle.swift; sourceTree = "<group>"; };
 		58CE60A474E30C67E1B15A79 /* Rudder.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Rudder.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		79054BCDEBD80D42962A6C22 /* UITestHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestHarness.swift; sourceTree = "<group>"; };
+		82EC42C5141FF55D338F2DF3 /* RudderWidgetExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = RudderWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F7CA84ADFCC3B3C9AE159B6 /* RudderComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RudderComponents.swift; sourceTree = "<group>"; };
 		907498C607F1070DE9CDBD4C /* SubscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService.swift; sourceTree = "<group>"; };
 		987339EC52A0C5B250644522 /* RudderShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RudderShortcuts.swift; sourceTree = "<group>"; };
+		B306E494D0D420CC93DC8B57 /* WidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetBridge.swift; sourceTree = "<group>"; };
 		BC92AA826F25120E0B2A1306 /* DecisionFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecisionFlowView.swift; sourceTree = "<group>"; };
 		C973B1188B363232E4D5CC88 /* RudderUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RudderUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CAE57F201BF565C9AF0CF4EA /* RudderUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RudderUITests.swift; sourceTree = "<group>"; };
@@ -88,6 +118,15 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		36417068BCA31406D9E00053 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				429D2FF9C7FF1B77D813608D /* RudderCore in Frameworks */,
+				B659C317CD99507F82C67362 /* RudderFlow in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		71BD9D2DA7565CBD7D92A91C /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -144,6 +183,7 @@
 				F112DAB7643C06571B0F5DC0 /* PersistenceService.swift */,
 				907498C607F1070DE9CDBD4C /* SubscriptionService.swift */,
 				79054BCDEBD80D42962A6C22 /* UITestHarness.swift */,
+				B306E494D0D420CC93DC8B57 /* WidgetBridge.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -155,6 +195,7 @@
 				06FA83277432E5AAC777014C /* Config */,
 				BFDA317FC987F5469289DD97 /* Packages */,
 				DB47AAA5EAEC34C5A297B3A1 /* Tests */,
+				89F61BD7522D51A90954096A /* Widget */,
 				3F11AE93B17AD2E6F4737658 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -173,6 +214,7 @@
 				58CE60A474E30C67E1B15A79 /* Rudder.app */,
 				2E3844136B9D4042F91A2275 /* RudderTests.xctest */,
 				C973B1188B363232E4D5CC88 /* RudderUITests.xctest */,
+				82EC42C5141FF55D338F2DF3 /* RudderWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -239,6 +281,14 @@
 				998969468E70D792ACC6DFDF /* DesignSystem */,
 			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		89F61BD7522D51A90954096A /* Widget */ = {
+			isa = PBXGroup;
+			children = (
+				589953070E7C9046B04E88BB /* RudderWidgetBundle.swift */,
+			);
+			path = Widget;
 			sourceTree = "<group>";
 		};
 		998969468E70D792ACC6DFDF /* DesignSystem */ = {
@@ -362,10 +412,12 @@
 				3FDEDFB2C3D648FBD6005EA0 /* Sources */,
 				8407389D4B0CC4C50B84C431 /* Resources */,
 				E014144C3B87701F6B38BA68 /* Frameworks */,
+				74A3CB2671C815F2089DC9DE /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C8628AECDE334945C67B3EDA /* PBXTargetDependency */,
 			);
 			name = Rudder;
 			packageProductDependencies = (
@@ -375,6 +427,26 @@
 			productName = Rudder;
 			productReference = 58CE60A474E30C67E1B15A79 /* Rudder.app */;
 			productType = "com.apple.product-type.application";
+		};
+		63A17717F18E869A7E82070B /* RudderWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 295C47CE9A78484572A83884 /* Build configuration list for PBXNativeTarget "RudderWidgetExtension" */;
+			buildPhases = (
+				70D42EF767E325CAFCB3E252 /* Sources */,
+				36417068BCA31406D9E00053 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RudderWidgetExtension;
+			packageProductDependencies = (
+				74CCD21F163DC206D5985774 /* RudderCore */,
+				D4AAC8F343FD5B4ED32B3AA6 /* RudderFlow */,
+			);
+			productName = RudderWidgetExtension;
+			productReference = 82EC42C5141FF55D338F2DF3 /* RudderWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -389,6 +461,9 @@
 						TestTargetID = 5E53540D7499EDDBBC72960B;
 					};
 					5E53540D7499EDDBBC72960B = {
+						ProvisioningStyle = Automatic;
+					};
+					63A17717F18E869A7E82070B = {
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -413,6 +488,7 @@
 				5E53540D7499EDDBBC72960B /* Rudder */,
 				4D6395AE825C397774A70C8F /* RudderTests */,
 				2A8907B64402E0A6E90098D4 /* RudderUITests */,
+				63A17717F18E869A7E82070B /* RudderWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -460,6 +536,16 @@
 				393195DDC5B7142E561FADF5 /* RudderTheme.swift in Sources */,
 				EFB81D6D6C3BEA3FF877327F /* SubscriptionService.swift in Sources */,
 				4015C26264200C3D417C8F88 /* UITestHarness.swift in Sources */,
+				5BC5D53364AF79EDED0F208C /* WidgetBridge.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		70D42EF767E325CAFCB3E252 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C6BF5267C664610CECFCD300 /* RudderWidgetBundle.swift in Sources */,
+				E58066EFB77C931693A8DD95 /* WidgetBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -485,6 +571,11 @@
 			isa = PBXTargetDependency;
 			target = 5E53540D7499EDDBBC72960B /* Rudder */;
 			targetProxy = 0DE971DCDA5D8B1BCD885960 /* PBXContainerItemProxy */;
+		};
+		C8628AECDE334945C67B3EDA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 63A17717F18E869A7E82070B /* RudderWidgetExtension */;
+			targetProxy = 2D4D70B211E8C027D3B2BDF8 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -522,6 +613,27 @@
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Rudder.app/Rudder";
 			};
 			name = Release;
+		};
+		0DF2DBE6F0E259AFB509A957 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/RudderWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Config/RudderWidgetExtension-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rudder.app.widget;
+				PRODUCT_NAME = RudderWidgetExtension;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
 		};
 		2A1926EC1A389832BFF3660C /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -665,6 +777,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = CEE1A921638524CB27EA6EB9 /* Release.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/Rudder.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -675,10 +788,32 @@
 			};
 			name = Release;
 		};
+		B93920F9052111DD31B2DCAD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/RudderWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Config/RudderWidgetExtension-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rudder.app.widget;
+				PRODUCT_NAME = RudderWidgetExtension;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		CD509ABD0D66460196D3FF28 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = FC9987B51A64B70B271C1709 /* Debug.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/Rudder.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -709,6 +844,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		295C47CE9A78484572A83884 /* Build configuration list for PBXNativeTarget "RudderWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0DF2DBE6F0E259AFB509A957 /* Debug */,
+				B93920F9052111DD31B2DCAD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		641E5D66120CA350DF012721 /* Build configuration list for PBXNativeTarget "RudderUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -759,9 +903,17 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = RudderFlow;
 		};
+		74CCD21F163DC206D5985774 /* RudderCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RudderCore;
+		};
 		B8A64398D7992C0CE5EC0A3F /* RudderCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = RudderCore;
+		};
+		D4AAC8F343FD5B4ED32B3AA6 /* RudderFlow */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RudderFlow;
 		};
 		E5FD8D25D28A005B927A7DCA /* RudderFlow */ = {
 			isa = XCSwiftPackageProductDependency;
