@@ -11,6 +11,7 @@
 		05DAE1340417E6FDA83F18D6 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE8350CF53FE2FF0F11A9AF5 /* AnalysisView.swift */; };
 		076C27D9F28624B3A990B993 /* EndToEndTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4847B014C5DB973D36FF669 /* EndToEndTests.swift */; };
 		0D7572244D9A0DA3229A265E /* RudderCore in Frameworks */ = {isa = PBXBuildFile; productRef = B8A64398D7992C0CE5EC0A3F /* RudderCore */; };
+		1206040E30E1A808B9F002FD /* RudderShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 987339EC52A0C5B250644522 /* RudderShortcuts.swift */; };
 		1267F2EA77531B1A9F139409 /* RudderCore in Frameworks */ = {isa = PBXBuildFile; productRef = F94935425AE209B19F4999AE /* RudderCore */; };
 		1D164F516F74A7CE07498B59 /* EntitlementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20D540AC56EB3EA5E0B11DCD /* EntitlementTests.swift */; };
 		26F7E0EC99607CB10CB36CE8 /* RudderFlow in Frameworks */ = {isa = PBXBuildFile; productRef = 0DEC87AAEE1EC740961200FE /* RudderFlow */; };
@@ -70,6 +71,7 @@
 		79054BCDEBD80D42962A6C22 /* UITestHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestHarness.swift; sourceTree = "<group>"; };
 		8F7CA84ADFCC3B3C9AE159B6 /* RudderComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RudderComponents.swift; sourceTree = "<group>"; };
 		907498C607F1070DE9CDBD4C /* SubscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService.swift; sourceTree = "<group>"; };
+		987339EC52A0C5B250644522 /* RudderShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RudderShortcuts.swift; sourceTree = "<group>"; };
 		BC92AA826F25120E0B2A1306 /* DecisionFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecisionFlowView.swift; sourceTree = "<group>"; };
 		C973B1188B363232E4D5CC88 /* RudderUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RudderUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CAE57F201BF565C9AF0CF4EA /* RudderUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RudderUITests.swift; sourceTree = "<group>"; };
@@ -181,6 +183,7 @@
 				CFB5EC4557070D2961A97323 /* AppEnvironment.swift */,
 				CE8E64B6EFC6C418936C2804 /* RootView.swift */,
 				01E2A801CA49EBAF38EDF27D /* RudderApp.swift */,
+				987339EC52A0C5B250644522 /* RudderShortcuts.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -453,6 +456,7 @@
 				638982C041B920B48FE60A42 /* RootView.swift in Sources */,
 				01C8333A1D286D6376E50EB3 /* RudderApp.swift in Sources */,
 				C08A70B4CA68421AED1E3E71 /* RudderComponents.swift in Sources */,
+				1206040E30E1A808B9F002FD /* RudderShortcuts.swift in Sources */,
 				393195DDC5B7142E561FADF5 /* RudderTheme.swift in Sources */,
 				EFB81D6D6C3BEA3FF877327F /* SubscriptionService.swift in Sources */,
 				4015C26264200C3D417C8F88 /* UITestHarness.swift in Sources */,

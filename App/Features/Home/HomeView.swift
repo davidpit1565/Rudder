@@ -8,6 +8,7 @@ struct HomeView: View {
     var onSeeAllDecisions: () -> Void = {}
 
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.scenePhase) private var scenePhase
     @State private var prompt = ""
     @State private var activeDecision: ActiveDecision?
     @State private var showingPaywall = false
@@ -67,6 +68,22 @@ struct HomeView: View {
         .sheet(isPresented: $showingPaywall) {
             PaywallView(context: .deepDecisionLimit)
         }
+        .task { consumePendingSiriPrompt() }
+        .onChange(of: scenePhase) { _, newPhase in
+            // A Siri/Shortcuts invocation runs out-of-process, so a prompt it hands
+            // off can arrive while this view already exists -- re-check whenever the
+            // app comes back to the foreground, not just on first appearance.
+            guard newPhase == .active else { return }
+            consumePendingSiriPrompt()
+        }
+    }
+
+    /// Picks up a decision prompt handed off by `StartDecisionIntent`, if there is
+    /// one waiting, and starts it the same way tapping the "Decide" button would.
+    private func consumePendingSiriPrompt() {
+        guard let pending = PendingSiriDecision.shared.consume() else { return }
+        prompt = pending
+        startDecision()
     }
 
     private var header: some View {
