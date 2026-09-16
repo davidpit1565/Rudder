@@ -14,6 +14,10 @@ struct HomeView: View {
     @State private var showingPaywall = false
     @State private var isConnected = true
     @FocusState private var isInputFocused: Bool
+    @State private var speechRecognizer = SpeechRecognizer()
+    /// What was already in the field when voice input started, so listening
+    /// appends to existing text instead of replacing it.
+    @State private var promptBeforeListening = ""
 
     private var trimmedPrompt: String {
         prompt.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -76,6 +80,7 @@ struct HomeView: View {
             guard newPhase == .active else { return }
             consumePendingSiriPrompt()
         }
+        .onDisappear { speechRecognizer.stop() }
     }
 
     /// Picks up a decision prompt handed off by `StartDecisionIntent`, if there is
@@ -102,32 +107,61 @@ struct HomeView: View {
 
     private var input: some View {
         VStack(alignment: .leading, spacing: RudderSpacing.s) {
-            TextField(
-                "I'm deciding between…",
-                text: $prompt,
-                axis: .vertical
-            )
-            .font(RudderFont.body)
-            .lineLimit(3...8)
-            .textInputAutocapitalization(.sentences)
-            .submitLabel(.done)
-            .focused($isInputFocused)
-            .padding(RudderSpacing.m)
-            .background(RudderColor.surface)
-            .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous)
-                    .stroke(isInputFocused ? RudderColor.accent : RudderColor.separator, lineWidth: 1)
-            )
-            .accessibilityLabel("What are you deciding?")
-            .accessibilityIdentifier(RudderID.decisionInput)
+            ZStack(alignment: .bottomTrailing) {
+                TextField(
+                    "I'm deciding between…",
+                    text: $prompt,
+                    axis: .vertical
+                )
+                .font(RudderFont.body)
+                .lineLimit(3...8)
+                .textInputAutocapitalization(.sentences)
+                .submitLabel(.done)
+                .focused($isInputFocused)
+                .padding(RudderSpacing.m)
+                .padding(.trailing, RudderSpacing.minimumTouchTarget)
+                .background(RudderColor.surface)
+                .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous)
+                        .stroke(isInputFocused ? RudderColor.accent : RudderColor.separator, lineWidth: 1)
+                )
+                .accessibilityLabel("What are you deciding?")
+                .accessibilityIdentifier(RudderID.decisionInput)
 
-            if !isConnected {
+                Button(action: toggleListening) {
+                    Image(systemName: speechRecognizer.isRecording ? "mic.fill" : "mic")
+                        .font(.body)
+                        .foregroundStyle(speechRecognizer.isRecording ? RudderColor.onAccent : RudderColor.secondaryText)
+                        .frame(width: RudderSpacing.minimumTouchTarget, height: RudderSpacing.minimumTouchTarget)
+                        .background(speechRecognizer.isRecording ? RudderColor.accent : .clear, in: .circle)
+                }
+                .buttonStyle(.plain)
+                .padding(RudderSpacing.xs)
+                .accessibilityLabel(speechRecognizer.isRecording ? "Stop voice input" : "Start voice input")
+                .accessibilityIdentifier(RudderID.voiceInput)
+            }
+
+            if let errorMessage = speechRecognizer.errorMessage {
+                InlineNotice(text: errorMessage, kind: .warning)
+            } else if !isConnected {
                 InlineNotice(
                     text: "You're offline. A new decision needs a connection — your saved decisions are still here.",
                     kind: .warning
                 )
             }
+        }
+    }
+
+    private func toggleListening() {
+        if speechRecognizer.isRecording {
+            speechRecognizer.stop()
+            return
+        }
+        promptBeforeListening = prompt
+        isInputFocused = true
+        speechRecognizer.start { transcript in
+            prompt = promptBeforeListening.isEmpty ? transcript : "\(promptBeforeListening) \(transcript)"
         }
     }
 
@@ -202,6 +236,7 @@ struct HomeView: View {
 
     private func startDecision() {
         isInputFocused = false
+        speechRecognizer.stop()
         let classification = DecisionClassifier.classify(trimmedPrompt)
         guard environment.canStartDecision(complexity: classification.complexity) else {
             environment.analytics.track(.paywallShown, properties: [.source: "deep_decision_limit"])
