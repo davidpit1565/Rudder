@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import WidgetKit
 import RudderCore
 import RudderFlow
 
@@ -103,6 +104,14 @@ final class AppEnvironment {
         } catch {
             storageError = "I couldn't open your saved decisions."
         }
+        updateWidget()
+    }
+
+    /// Keeps the Home Screen widget's snapshot of the latest decision current.
+    /// Best-effort: a widget that can't be reached is not a reason to fail a reload.
+    private func updateWidget() {
+        WidgetBridge.write(WidgetSnapshot.make(from: decisions))
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     // MARK: - Decisions

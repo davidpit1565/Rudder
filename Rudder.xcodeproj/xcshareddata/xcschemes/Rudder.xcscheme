@@ -21,6 +21,20 @@
                ReferencedContainer = "container:Rudder.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "63A17717F18E869A7E82070B"
+               BuildableName = "RudderWidgetExtension.appex"
+               BlueprintName = "RudderWidgetExtension"
+               ReferencedContainer = "container:Rudder.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
