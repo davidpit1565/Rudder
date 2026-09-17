@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { handle } from "../src/handler.js";
 import { resolveClientKey } from "../src/rateLimit.js";
 import { hasUnreliableRateLimiting } from "../src/redis.js";
+import { readBody, PayloadTooLargeError } from "../src/readBody.js";
 
 if (hasUnreliableRateLimiting()) {
   // Runs once per cold start, not per request -- loud enough to notice
@@ -40,7 +41,20 @@ export default async function vercelHandler(
   const clientKey = resolveClientKey(headers, undefined, trustsProxy);
   const path = new URL(request.url ?? "/", "http://localhost").pathname;
   const method = request.method ?? "GET";
-  const body = method === "GET" || method === "HEAD" ? "" : await readBody(request);
+
+  let body: string;
+  try {
+    body = method === "GET" || method === "HEAD" ? "" : await readBody(request, 64_000);
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      response.statusCode = 413;
+      response.setHeader("Content-Type", "application/json");
+      response.end(JSON.stringify({ error: "payload_too_large" }));
+      request.destroy();
+      return;
+    }
+    throw error;
+  }
 
   const result = await handle({ method, path, headers, body, clientKey });
 
@@ -49,13 +63,4 @@ export default async function vercelHandler(
     response.setHeader(key, value);
   }
   response.end(result.body);
-}
-
-function readBody(request: IncomingMessage): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    request.on("data", (chunk: Buffer) => chunks.push(chunk));
-    request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-    request.on("error", reject);
-  });
 }
