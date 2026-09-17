@@ -37,6 +37,9 @@ final class AppEnvironment {
 
     private(set) var decisions: [DecisionRecord] = []
     private(set) var memory: [MemoryEntry] = []
+    /// Preference candidates the user has already said "not now" to, so the same
+    /// suggestion doesn't reappear on the very next decision.
+    private(set) var declinedMemoryKeys: Set<String> = []
     /// A preference RUDDER would like to remember, waiting on the user's answer.
     private(set) var pendingMemoryCandidate: MemoryCandidate?
     private(set) var storageError: String?
@@ -100,6 +103,7 @@ final class AppEnvironment {
         do {
             decisions = try persistence.allDecisions()
             memory = try persistence.allMemory()
+            declinedMemoryKeys = try persistence.declinedMemoryKeys()
             storageError = nil
         } catch {
             storageError = "I couldn't open your saved decisions."
@@ -155,7 +159,7 @@ final class AppEnvironment {
             pendingMemoryCandidate = nil
             return
         }
-        let candidates = MemoryEngine.candidates(from: decisions, existing: memory)
+        let candidates = MemoryEngine.candidates(from: decisions, existing: memory, excludedKeys: declinedMemoryKeys)
         pendingMemoryCandidate = candidates.first
         if pendingMemoryCandidate != nil {
             analytics.track(.memoryProposed)
@@ -178,6 +182,9 @@ final class AppEnvironment {
     }
 
     func declinePendingMemory() {
+        guard let candidate = pendingMemoryCandidate else { return }
+        try? persistence.declineMemory(key: candidate.key)
+        declinedMemoryKeys.insert(candidate.key)
         pendingMemoryCandidate = nil
     }
 

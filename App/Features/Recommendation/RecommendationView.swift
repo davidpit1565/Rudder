@@ -9,6 +9,8 @@ struct RecommendationView: View {
     let onChoose: (String) -> Void
     let onDone: () -> Void
 
+    @Environment(AppEnvironment.self) private var environment
+
     private enum Presentation: Identifiable {
         case otherOptions
         case analysis
@@ -126,6 +128,10 @@ struct RecommendationView: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("My recommendation: \(option.name). \(result.headline)")
+
+            if let remembered = MemoryEngine.relevantEntries(for: result, in: environment.memory).first {
+                InlineNotice(text: "Using what I've learned about you: \(remembered.statement)")
+            }
 
             if !result.reasons.isEmpty {
                 VStack(alignment: .leading, spacing: RudderSpacing.m) {
