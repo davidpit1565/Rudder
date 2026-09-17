@@ -65,10 +65,10 @@ Set in the environment, never in code:
 | `DECIDE_CLIENT_TOKEN` | Optional bearer token. Coarse filter only — see below. |
 | `DECIDE_REQUIRE_ATTESTATION` | `1` refuses every request until App Attest is implemented. |
 | `DECIDE_KV_KV_REST_API_URL`, `DECIDE_KV_KV_REST_API_TOKEN` | Upstash Redis REST credentials (`src/redis.ts`). Required for the rate and concurrency limits to actually hold — see below. The doubled "KV" is not a typo, just what Vercel's Upstash integration produced for this project's variable prefix. |
-| `DECIDE_FREE_DEEP_DECISIONS_PER_MONTH` | How many "complex" decisions one install may spend without a verified Pro transaction, per calendar month (`src/quota.ts`). Defaults to 3, mirroring `FeatureAccess.freeDeepDecisionsPerMonth` in `App/App/AppEnvironment.swift` — the two aren't wired together, so keep them in sync by hand if either changes. |
+| `DECIDE_FREE_DEEP_DECISIONS_PER_MONTH` | How many "complex" decisions one install may spend without a verified Pro transaction, per calendar month (`src/quota.ts`). Defaults to 1, mirroring `FeatureAccess.freeDeepDecisionsPerMonth` in `App/App/AppEnvironment.swift` — the two aren't wired together, so keep them in sync by hand if either changes. Set low deliberately: at bootstrap-stage volume this is the most direct lever on Free's own cost. |
 | `DECIDE_BUNDLE_ID` | The app's bundle identifier, checked against every Pro transaction (`src/appStoreVerify.ts`). Defaults to `com.rudder.app` — confirm that's actually the Rudder target's `PRODUCT_BUNDLE_IDENTIFIER` and set this explicitly if it ever differs. |
 | `DECIDE_APPLE_ROOT_FINGERPRINT` | Overrides the pinned Apple Root CA - G3 fingerprint `src/appStoreVerify.ts` verifies every transaction chain against. Only ever set in tests; production should use the hardcoded default. |
-| `DECIDE_MONTHLY_FREE_SPEND_CEILING_USD` | The absolute ceiling on total estimated Free-tier AI spend per calendar month, across every install (`src/spendCeiling.ts`). Defaults to $30. Never applies to a verified Pro transaction. |
+| `DECIDE_MONTHLY_FREE_SPEND_CEILING_USD` | The absolute ceiling on total estimated Free-tier AI spend per calendar month, across every install (`src/spendCeiling.ts`). Defaults to $12 -- kept tight at bootstrap-stage volume, since this plus fixed hosting cost is the real monthly floor a small payer base has to outrun. Raise it once real conversion data justifies carrying more cost. Never applies to a verified Pro transaction. |
 
 ### Why the limits need Redis on a serverless host
 
@@ -287,7 +287,7 @@ Two pieces close it, both server-side:
   for any request that doesn't carry a verified Pro transaction.
 - **`src/spendCeiling.ts`** is the backstop the per-install quota alone
   doesn't give: an absolute ceiling (`DECIDE_MONTHLY_FREE_SPEND_CEILING_USD`,
-  default $30) on *total* estimated Free-tier spend across every install,
+  default $12) on *total* estimated Free-tier spend across every install,
   every month. Enough simultaneous installs each spending their own small
   quota can still add up past what the business can absorb before
   conversion catches up — this is what makes the worst case a fixed, known

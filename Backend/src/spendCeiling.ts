@@ -25,7 +25,14 @@ export const ESTIMATED_COST_USD: Record<"simple" | "medium" | "complex", number>
   complex: 0.3,
 };
 
-export const DEFAULT_MONTHLY_FREE_SPEND_CEILING_USD = 30;
+// Set to $12, not $30: at bootstrap-stage volume, this ceiling plus fixed
+// hosting cost is the real monthly floor cost the payer base has to outrun,
+// and a lower ceiling shrinks that floor directly -- see the "Bootstrap"
+// scenario in the Rudder Vision Model for the concrete effect (worst
+// cumulative drawdown drops from roughly -$400 to roughly -$20 across the
+// same 24 months, holding every growth/conversion assumption fixed). Raise
+// it once real conversion data justifies carrying more Free-tier cost.
+export const DEFAULT_MONTHLY_FREE_SPEND_CEILING_USD = 12;
 
 export interface SpendCeilingDecision {
   allowed: boolean;

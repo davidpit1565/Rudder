@@ -10,7 +10,13 @@ import RudderFlow
 /// finished decision out of RUDDER.
 enum FeatureAccess {
     /// Deep decisions (the full research + analysis pipeline) per calendar month on Free.
-    static let freeDeepDecisionsPerMonth = 3
+    /// Mirrors DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH in Backend/src/quota.ts, which
+    /// enforces the real ceiling server-side -- keep the two in sync by hand.
+    /// Set low deliberately: at bootstrap-stage volume, Free's own AI cost is the
+    /// real financial risk, and this is the most direct lever on it. It never
+    /// affects simple/medium decisions (still unlimited) or a new install's very
+    /// first decision (always free, see allowsDeepDecision below).
+    static let freeDeepDecisionsPerMonth = 1
     /// How far back Free history goes.
     static let freeHistoryLimit = 10
 

@@ -18,7 +18,7 @@ final class EntitlementTests: XCTestCase {
     }
 
     func testFreeUsersGetAMonthlyAllowanceOfDeepDecisions() {
-        XCTAssertTrue(FeatureAccess.allowsDeepDecision(isPro: false, completedDecisionCount: 4, deepDecisionsThisMonth: 2))
+        XCTAssertTrue(FeatureAccess.allowsDeepDecision(isPro: false, completedDecisionCount: 4, deepDecisionsThisMonth: 0))
         XCTAssertFalse(
             FeatureAccess.allowsDeepDecision(
                 isPro: false,

@@ -233,6 +233,9 @@ test("a complex decision is capped per install once Free's monthly quota is spen
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
   resetConcurrency();
+  // Set explicitly so this test's expectations don't silently drift if the
+  // shipped default ever changes.
+  process.env.DECIDE_FREE_DEEP_DECISIONS_PER_MONTH = "3";
   const { analyse, release } = controllableAnalyse();
   release(); // let every analyse() call resolve immediately
 
@@ -247,6 +250,7 @@ test("a complex decision is capped per install once Free's monthly quota is spen
   assert.equal(JSON.parse(fourth.body).error, "deep_decision_limit_reached");
   assert.ok(Number(fourth.headers["Retry-After"]) > 0);
 
+  delete process.env.DECIDE_FREE_DEEP_DECISIONS_PER_MONTH;
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
 });
@@ -272,6 +276,7 @@ test("two installs never share a deep-decision quota bucket", async () => {
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
   resetConcurrency();
+  process.env.DECIDE_FREE_DEEP_DECISIONS_PER_MONTH = "3";
   const { analyse, release } = controllableAnalyse();
   release();
 
@@ -284,6 +289,7 @@ test("two installs never share a deep-decision quota bucket", async () => {
   const otherInstall = await handle(request({ headers: { "x-rudder-install-id": "install-y" }, body: validBody({ complexity: "complex" }) }), { analyse });
   assert.equal(otherInstall.status, 200, "a different install starts with its own fresh quota");
 
+  delete process.env.DECIDE_FREE_DEEP_DECISIONS_PER_MONTH;
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
 });

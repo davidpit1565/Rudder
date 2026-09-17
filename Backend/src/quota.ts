@@ -8,15 +8,23 @@ import { isConfigured, pipeline } from "./redis.js";
  * TypeScript can't share a constant), so keep them in sync by hand if either
  * changes.
  *
- * Before this existed, that 3/month ceiling was enforced only on the
- * device: the backend accepted whatever `complexity`/`researchLevel` a
- * request declared, for anyone who could reach the endpoint at all. This is
- * the fix -- an independent, server-side ceiling that holds regardless of
- * what the client claims, closing the gap the OWASP-style monetization audit
- * found (Backend/README.md's "Known gap" section covers the sibling gap,
- * client identity itself).
+ * Before this existed, this ceiling was enforced only on the device: the
+ * backend accepted whatever `complexity`/`researchLevel` a request declared,
+ * for anyone who could reach the endpoint at all. This is the fix -- an
+ * independent, server-side ceiling that holds regardless of what the client
+ * claims, closing the gap the OWASP-style monetization audit found
+ * (Backend/README.md's "Known gap" section covers the sibling gap, client
+ * identity itself).
+ *
+ * Set to 1, not 3: at low volume the free tier's own cost is the dominant
+ * risk (see spendCeiling.ts), and a stingier free deep-decision allowance is
+ * a direct, immediate lever on it -- it does not touch simple or medium
+ * decisions (still unlimited on Free), and it never touches the very first
+ * decision a new install ever makes, which `FeatureAccess.allowsDeepDecision`
+ * always allows regardless of this number. Raise it again once real
+ * conversion data justifies the extra cost.
  */
-export const DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH = 3;
+export const DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH = 1;
 
 export interface QuotaDecision {
   allowed: boolean;
