@@ -12,11 +12,12 @@ enum FeatureAccess {
     /// Deep decisions (the full research + analysis pipeline) per calendar month on Free.
     /// Mirrors DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH in Backend/src/quota.ts, which
     /// enforces the real ceiling server-side -- keep the two in sync by hand.
-    /// Set low deliberately: at bootstrap-stage volume, Free's own AI cost is the
-    /// real financial risk, and this is the most direct lever on it. It never
-    /// affects simple/medium decisions (still unlimited) or a new install's very
-    /// first decision (always free, see allowsDeepDecision below).
-    static let freeDeepDecisionsPerMonth = 1
+    /// Kept at 3: modeling the actual monthly trajectory showed this number barely
+    /// affects total Free-tier spend once the backend's global spend ceiling
+    /// (spendCeiling.ts) exists -- that ceiling clips aggregate cost regardless of
+    /// this allowance, so cutting it bought almost no financial safety while making
+    /// the product meaningfully stingier.
+    static let freeDeepDecisionsPerMonth = 3
     /// How far back Free history goes.
     static let freeHistoryLimit = 10
 

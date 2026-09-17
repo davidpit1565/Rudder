@@ -16,15 +16,17 @@ import { isConfigured, pipeline } from "./redis.js";
  * (Backend/README.md's "Known gap" section covers the sibling gap, client
  * identity itself).
  *
- * Set to 1, not 3: at low volume the free tier's own cost is the dominant
- * risk (see spendCeiling.ts), and a stingier free deep-decision allowance is
- * a direct, immediate lever on it -- it does not touch simple or medium
- * decisions (still unlimited on Free), and it never touches the very first
- * decision a new install ever makes, which `FeatureAccess.allowsDeepDecision`
- * always allows regardless of this number. Raise it again once real
- * conversion data justifies the extra cost.
+ * Kept at 3, not cut to shrink cost: modeling the actual monthly trajectory
+ * showed the per-install allowance barely affects total Free-tier spend once
+ * `spendCeiling.ts`'s global ceiling exists -- that ceiling clips *aggregate*
+ * cost regardless of whether each install is allowed 1 or 3 deep decisions,
+ * so cutting this number bought almost no financial safety while making the
+ * product meaningfully stingier. The ceiling (plus deferring fixed hosting
+ * cost to $0 pre-revenue) is the lever that actually matters; see the
+ * "Bootstrap" scenario in the Rudder Vision Model artifact for the traced
+ * comparison.
  */
-export const DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH = 1;
+export const DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH = 3;
 
 export interface QuotaDecision {
   allowed: boolean;
