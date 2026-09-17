@@ -38,7 +38,8 @@ final class PersistenceService {
             StoredDecision.self,
             StoredDecisionResult.self,
             StoredOutcome.self,
-            StoredMemoryEntry.self
+            StoredMemoryEntry.self,
+            StoredDeclinedMemoryKey.self
         ])
     }
 
@@ -217,6 +218,24 @@ final class PersistenceService {
     func deleteAllMemory() throws {
         let context = try requireContext()
         try context.delete(model: StoredMemoryEntry.self)
+        try context.delete(model: StoredDeclinedMemoryKey.self)
+        try context.save()
+    }
+
+    // MARK: - Declined memory candidates
+
+    func declinedMemoryKeys() throws -> Set<String> {
+        let context = try requireContext()
+        let descriptor = FetchDescriptor<StoredDeclinedMemoryKey>()
+        return Set(try context.fetch(descriptor).map(\.key))
+    }
+
+    /// Idempotent: declining the same key twice does not create a duplicate row.
+    func declineMemory(key: String) throws {
+        let context = try requireContext()
+        let descriptor = FetchDescriptor<StoredDeclinedMemoryKey>(predicate: #Predicate { $0.key == key })
+        guard try context.fetch(descriptor).first == nil else { return }
+        context.insert(StoredDeclinedMemoryKey(key: key))
         try context.save()
     }
 
@@ -225,6 +244,7 @@ final class PersistenceService {
     func deleteEverything() throws {
         let context = try requireContext()
         try context.delete(model: StoredMemoryEntry.self)
+        try context.delete(model: StoredDeclinedMemoryKey.self)
         try context.delete(model: StoredOutcome.self)
         try context.delete(model: StoredDecisionResult.self)
         try context.delete(model: StoredDecision.self)

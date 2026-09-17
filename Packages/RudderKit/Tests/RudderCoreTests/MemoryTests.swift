@@ -104,6 +104,38 @@ final class MemoryTests: XCTestCase {
         let entry = MemoryEntry(key: "a>b", statement: "s", evidenceCount: 2, isEnabled: false)
         XCTAssertTrue(MemoryEngine.knownKeys(from: [entry]).isEmpty)
     }
+
+    func testADeclinedKeyIsNotProposedAgain() {
+        let records = [
+            record(chosen: "a", convenience: (0.9, 0.3), price: (0.3, 0.9)),
+            record(chosen: "a", convenience: (0.9, 0.3), price: (0.3, 0.9))
+        ]
+        // Nothing accepted -- this is a "not now", not a confirmed memory --
+        // but the key is still excluded from being proposed again.
+        let candidates = MemoryEngine.candidates(from: records, excludedKeys: ["convenience>price"])
+        XCTAssertTrue(candidates.isEmpty)
+    }
+
+    func testRelevantEntriesMatchOnBothCriteriaInTheKey() {
+        let entry = MemoryEntry(key: "convenience>price", statement: "You often prioritize convenience over price.", evidenceCount: 2)
+        let result = record(chosen: "a", convenience: (0.9, 0.3), price: (0.3, 0.9)).result
+
+        XCTAssertEqual(MemoryEngine.relevantEntries(for: result, in: [entry]).map(\.key), ["convenience>price"])
+    }
+
+    func testRelevantEntriesExcludeUnrelatedCriteria() {
+        let entry = MemoryEntry(key: "speed>cost", statement: "You often prioritize speed over cost.", evidenceCount: 2)
+        let result = record(chosen: "a", convenience: (0.9, 0.3), price: (0.3, 0.9)).result
+
+        XCTAssertTrue(MemoryEngine.relevantEntries(for: result, in: [entry]).isEmpty)
+    }
+
+    func testRelevantEntriesExcludeDisabledMemory() {
+        let entry = MemoryEntry(key: "convenience>price", statement: "s", evidenceCount: 2, isEnabled: false)
+        let result = record(chosen: "a", convenience: (0.9, 0.3), price: (0.3, 0.9)).result
+
+        XCTAssertTrue(MemoryEngine.relevantEntries(for: result, in: [entry]).isEmpty)
+    }
 }
 
 /// Outcome learning: what the user says happened changes what RUDDER learns.

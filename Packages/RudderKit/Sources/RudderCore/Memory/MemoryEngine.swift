@@ -55,9 +55,14 @@ public enum MemoryEngine {
 
     /// Looks at what the user chose versus what they gave up, and finds criteria
     /// they repeatedly favoured.
+    ///
+    /// `excludedKeys` covers patterns the user has already said "not now" to --
+    /// distinct from `existing`, which is what they already confirmed. Neither
+    /// is proposed again, but only `existing` is fed back to the AI as known.
     public static func candidates(
         from records: [DecisionRecord],
         existing: [MemoryEntry] = [],
+        excludedKeys: Set<String> = [],
         minimumEvidence: Int = MemoryEngine.minimumEvidence
     ) -> [MemoryCandidate] {
         var favouredOver: [String: Int] = [:]   // "convenience>price" -> count
@@ -89,7 +94,7 @@ public enum MemoryEngine {
             }
         }
 
-        let existingKeys = Set(existing.map(\.key))
+        let existingKeys = Set(existing.map(\.key)).union(excludedKeys)
 
         return favouredOver
             .filter { $0.value >= minimumEvidence && !existingKeys.contains($0.key) }
@@ -114,6 +119,19 @@ public enum MemoryEngine {
             createdAt: now,
             updatedAt: now
         )
+    }
+
+    /// Confirmed memory entries whose criterion pair both appear among this
+    /// decision's own criteria -- a good-enough signal that a preference the user
+    /// already confirmed was relevant here, without needing the model to report
+    /// back which parts of its context it actually leaned on.
+    public static func relevantEntries(for result: DecisionResult, in memory: [MemoryEntry]) -> [MemoryEntry] {
+        let criteriaNames = Set(result.criteria.map { normalise($0.name) })
+        return memory.filter { entry in
+            guard entry.isEnabled else { return false }
+            let parts = entry.key.split(separator: ">").map(String.init)
+            return !parts.isEmpty && parts.allSatisfy { criteriaNames.contains($0) }
+        }
     }
 
     /// The keys the question engine treats as already known, so RUDDER does not ask

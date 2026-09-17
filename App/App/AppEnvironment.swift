@@ -10,6 +10,13 @@ import RudderFlow
 /// finished decision out of RUDDER.
 enum FeatureAccess {
     /// Deep decisions (the full research + analysis pipeline) per calendar month on Free.
+    /// Mirrors DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH in Backend/src/quota.ts, which
+    /// enforces the real ceiling server-side -- keep the two in sync by hand.
+    /// Kept at 3: modeling the actual monthly trajectory showed this number barely
+    /// affects total Free-tier spend once the backend's global spend ceiling
+    /// (spendCeiling.ts) exists -- that ceiling clips aggregate cost regardless of
+    /// this allowance, so cutting it bought almost no financial safety while making
+    /// the product meaningfully stingier.
     static let freeDeepDecisionsPerMonth = 3
     /// How far back Free history goes.
     static let freeHistoryLimit = 10
@@ -37,6 +44,9 @@ final class AppEnvironment {
 
     private(set) var decisions: [DecisionRecord] = []
     private(set) var memory: [MemoryEntry] = []
+    /// Preference candidates the user has already said "not now" to, so the same
+    /// suggestion doesn't reappear on the very next decision.
+    private(set) var declinedMemoryKeys: Set<String> = []
     /// A preference RUDDER would like to remember, waiting on the user's answer.
     private(set) var pendingMemoryCandidate: MemoryCandidate?
     private(set) var storageError: String?
@@ -100,6 +110,7 @@ final class AppEnvironment {
         do {
             decisions = try persistence.allDecisions()
             memory = try persistence.allMemory()
+            declinedMemoryKeys = try persistence.declinedMemoryKeys()
             storageError = nil
         } catch {
             storageError = "I couldn't open your saved decisions."
@@ -155,7 +166,7 @@ final class AppEnvironment {
             pendingMemoryCandidate = nil
             return
         }
-        let candidates = MemoryEngine.candidates(from: decisions, existing: memory)
+        let candidates = MemoryEngine.candidates(from: decisions, existing: memory, excludedKeys: declinedMemoryKeys)
         pendingMemoryCandidate = candidates.first
         if pendingMemoryCandidate != nil {
             analytics.track(.memoryProposed)
@@ -178,6 +189,9 @@ final class AppEnvironment {
     }
 
     func declinePendingMemory() {
+        guard let candidate = pendingMemoryCandidate else { return }
+        try? persistence.declineMemory(key: candidate.key)
+        declinedMemoryKeys.insert(candidate.key)
         pendingMemoryCandidate = nil
     }
 
@@ -239,6 +253,10 @@ final class AppEnvironment {
         // a scenario argument. Compiled out of Release.
         if let scripted = UITestHarness.analysisService() { return scripted }
         #endif
-        return RemoteDecisionAnalysisService(configuration: configuration)
+        return RemoteDecisionAnalysisService(
+            configuration: configuration,
+            installId: InstallIdentity.current,
+            proTransactionProvider: { [subscriptions] in await subscriptions.currentTransactionJWS() }
+        )
     }
 }

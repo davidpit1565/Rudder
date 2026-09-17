@@ -39,7 +39,7 @@ iPhone  ->  POST /v1/decisions/analyze  ->  Anthropic API  ->  validated JSON  -
 ```bash
 cp .env.example .env     # add your ANTHROPIC_API_KEY
 npm install
-npm test                 # 54 tests, no network, no spend
+npm test                 # 80 tests, no network, no spend
 npm run build && npm start
 ```
 
@@ -65,6 +65,10 @@ Set in the environment, never in code:
 | `DECIDE_CLIENT_TOKEN` | Optional bearer token. Coarse filter only — see below. |
 | `DECIDE_REQUIRE_ATTESTATION` | `1` refuses every request until App Attest is implemented. |
 | `DECIDE_KV_KV_REST_API_URL`, `DECIDE_KV_KV_REST_API_TOKEN` | Upstash Redis REST credentials (`src/redis.ts`). Required for the rate and concurrency limits to actually hold — see below. The doubled "KV" is not a typo, just what Vercel's Upstash integration produced for this project's variable prefix. |
+| `DECIDE_FREE_DEEP_DECISIONS_PER_MONTH` | How many "complex" decisions one install may spend without a verified Pro transaction, per calendar month (`src/quota.ts`). Defaults to 3, mirroring `FeatureAccess.freeDeepDecisionsPerMonth` in `App/App/AppEnvironment.swift` — the two aren't wired together, so keep them in sync by hand if either changes. Deliberately *not* cut lower to save money: `DECIDE_MONTHLY_FREE_SPEND_CEILING_USD` already clips aggregate Free-tier spend regardless of this number, so a lower allowance here buys almost no extra safety while making the product stingier. |
+| `DECIDE_BUNDLE_ID` | The app's bundle identifier, checked against every Pro transaction (`src/appStoreVerify.ts`). Defaults to `com.rudder.app` — confirm that's actually the Rudder target's `PRODUCT_BUNDLE_IDENTIFIER` and set this explicitly if it ever differs. |
+| `DECIDE_APPLE_ROOT_FINGERPRINT` | Overrides the pinned Apple Root CA - G3 fingerprint `src/appStoreVerify.ts` verifies every transaction chain against. Only ever set in tests; production should use the hardcoded default. |
+| `DECIDE_MONTHLY_FREE_SPEND_CEILING_USD` | The absolute ceiling on total estimated Free-tier AI spend per calendar month, across every install (`src/spendCeiling.ts`). Defaults to $12 -- kept tight at bootstrap-stage volume, since this plus fixed hosting cost is the real monthly floor a small payer base has to outrun. Raise it once real conversion data justifies carrying more cost. Never applies to a verified Pro transaction. |
 
 ### Why the limits need Redis on a serverless host
 
@@ -258,12 +262,49 @@ more than one instance, each instance enforces its own copy, so the effective
 ceiling multiplies by the instance count — either run a single instance until
 that matters, or back all three with a shared store.
 
-This also means the backend has no notion of Free vs. Pro: that limit lives
-entirely in the app's local state (`FeatureAccess` in
-`App/App/AppEnvironment.swift`) and this endpoint enforces no purchase of its
-own. Calling it directly, bypassing the app, gets the same access a paying
-user gets — one more reason the limits above should reflect the worst case,
-not the expected one.
+### Free vs. Pro: enforced here, not just in the app
+
+This used to be entirely the app's problem: `FeatureAccess` in
+`App/App/AppEnvironment.swift` capped "complex" (deep) decisions at 3/month
+on-device, and this endpoint accepted whatever `complexity`/`researchLevel` a
+request declared, for anyone who could reach it at all — a monetization audit
+surfaced this as the real cost risk (worse than churn: nothing tied "who
+pays" to "who spends AI money").
+
+Two pieces close it, both server-side:
+
+- **`src/appStoreVerify.ts`** independently re-verifies a StoreKit 2
+  transaction's signed JWS (sent as the `X-Rudder-Transaction` header) against
+  Apple's own public root of trust — never trusting a client-declared
+  `isPro` boolean, the same reasoning `analyze.ts` already applies to the
+  model's own JSON output. Fails closed on anything unexpected: expired,
+  revoked, wrong bundle/product, malformed, or an untrusted signer all mean
+  "not proven Pro," never a crash or a soft pass.
+- **`src/quota.ts`** tracks complex-decision spend per install
+  (`X-Rudder-Install-Id`, a random UUID the app generates once and keeps —
+  see `App/Services/InstallIdentity.swift`) per calendar month, Redis-backed
+  like the rate limiter, and enforces `DECIDE_FREE_DEEP_DECISIONS_PER_MONTH`
+  for any request that doesn't carry a verified Pro transaction.
+- **`src/spendCeiling.ts`** is the backstop the per-install quota alone
+  doesn't give: an absolute ceiling (`DECIDE_MONTHLY_FREE_SPEND_CEILING_USD`,
+  default $12) on *total* estimated Free-tier spend across every install,
+  every month. Enough simultaneous installs each spending their own small
+  quota can still add up past what the business can absorb before
+  conversion catches up — this is what makes the worst case a fixed, known
+  number instead of "however many people show up this month." It trips
+  independently of the per-install quota, applies to every complexity (not
+  just "complex"), and never applies to a verified Pro transaction.
+
+**What this does not (yet) solve:** identity itself. `appStoreVerify.ts` has
+only ever been exercised against a synthetic certificate chain built for its
+own unit tests (`src/test/appStoreVerify.test.ts`) — there is no Xcode/macOS
+or real Apple transaction available in the environment this was written in,
+so it has never been proven against an actual StoreKit purchase end to end.
+Treat that the same as the App Attest gap above: confirm it during the
+Product Reality Test, with one real purchase, before trusting it in
+production. If it's ever silently broken, the fail-closed design means the
+failure mode is a paying user held to the Free quota (visible, recoverable),
+never the server granting free unmetered access.
 
 ## Cost
 

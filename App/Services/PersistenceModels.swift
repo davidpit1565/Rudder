@@ -105,6 +105,20 @@ final class StoredMemoryEntry {
     }
 }
 
+/// A memory candidate the user explicitly said "not now" to. Kept only so the
+/// same suggestion doesn't reappear on the very next decision -- never shown to
+/// the user as a stored memory, and never fed to the AI as a known preference.
+@Model
+final class StoredDeclinedMemoryKey {
+    @Attribute(.unique) var key: String
+    var declinedAt: Date
+
+    init(key: String, declinedAt: Date = Date()) {
+        self.key = key
+        self.declinedAt = declinedAt
+    }
+}
+
 // MARK: - Mapping
 
 extension StoredDecision {
