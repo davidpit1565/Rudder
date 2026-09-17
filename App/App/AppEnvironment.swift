@@ -246,6 +246,10 @@ final class AppEnvironment {
         // a scenario argument. Compiled out of Release.
         if let scripted = UITestHarness.analysisService() { return scripted }
         #endif
-        return RemoteDecisionAnalysisService(configuration: configuration)
+        return RemoteDecisionAnalysisService(
+            configuration: configuration,
+            installId: InstallIdentity.current,
+            proTransactionProvider: { [subscriptions] in await subscriptions.currentTransactionJWS() }
+        )
     }
 }

@@ -97,6 +97,22 @@ final class SubscriptionService {
         }
     }
 
+    /// The signed JWS of the current Pro entitlement's transaction, sent to the
+    /// backend as proof of purchase so it can enforce the Free/Pro line itself
+    /// rather than trusting a client-declared boolean. `nil` when there is no
+    /// current entitlement -- the request then falls back to the Free quota,
+    /// which is the correct, safe default.
+    func currentTransactionJWS() async -> String? {
+        for await verification in Transaction.currentEntitlements {
+            guard case .verified(let transaction) = verification else { continue }
+            guard ProductID.all.contains(transaction.productID) else { continue }
+            guard transaction.revocationDate == nil else { continue }
+            guard let expiry = transaction.expirationDate, expiry > Date() else { continue }
+            return verification.jwsRepresentation
+        }
+        return nil
+    }
+
     func refreshEntitlement() async {
         if !entitlement.isResolved { entitlement = .checking }
 

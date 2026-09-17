@@ -69,11 +69,19 @@ public struct RemoteDecisionAnalysisService: DecisionAnalysisService {
     let configuration: AppConfiguration
     let session: URLSession
     let reachability: @Sendable () -> Bool
+    /// A stable, anonymous per-install identifier, sent so the backend can
+    /// enforce the Free tier's monthly deep-decision cap itself.
+    let installId: String
+    /// The current Pro entitlement's signed transaction, if any -- proof the
+    /// backend independently verifies rather than trusting an "isPro" claim.
+    let proTransactionProvider: @Sendable () async -> String?
 
     public init(
         configuration: AppConfiguration = .shared,
         session: URLSession? = nil,
-        reachability: (@Sendable () -> Bool)? = nil
+        reachability: (@Sendable () -> Bool)? = nil,
+        installId: String,
+        proTransactionProvider: @escaping @Sendable () async -> String? = { nil }
     ) {
         self.configuration = configuration
         if let session {
@@ -88,6 +96,8 @@ public struct RemoteDecisionAnalysisService: DecisionAnalysisService {
             self.session = URLSession(configuration: config)
         }
         self.reachability = reachability ?? { Reachability.shared.isConnected }
+        self.installId = installId
+        self.proTransactionProvider = proTransactionProvider
     }
 
     public func analyse(_ request: DecisionAnalysisRequest) async throws -> ValidatedAIResponse {
@@ -130,6 +140,10 @@ public struct RemoteDecisionAnalysisService: DecisionAnalysisService {
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.setValue(installId, forHTTPHeaderField: "X-Rudder-Install-Id")
+        if let transaction = await proTransactionProvider() {
+            urlRequest.setValue(transaction, forHTTPHeaderField: "X-Rudder-Transaction")
+        }
         urlRequest.httpBody = try JSONEncoder().encode(request)
 
         let data: Data
