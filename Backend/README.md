@@ -39,7 +39,7 @@ iPhone  ->  POST /v1/decisions/analyze  ->  Anthropic API  ->  validated JSON  -
 ```bash
 cp .env.example .env     # add your ANTHROPIC_API_KEY
 npm install
-npm test                 # 78 tests, no network, no spend
+npm test                 # 80 tests, no network, no spend
 npm run build && npm start
 ```
 
@@ -68,6 +68,7 @@ Set in the environment, never in code:
 | `DECIDE_FREE_DEEP_DECISIONS_PER_MONTH` | How many "complex" decisions one install may spend without a verified Pro transaction, per calendar month (`src/quota.ts`). Defaults to 3, mirroring `FeatureAccess.freeDeepDecisionsPerMonth` in `App/App/AppEnvironment.swift` — the two aren't wired together, so keep them in sync by hand if either changes. |
 | `DECIDE_BUNDLE_ID` | The app's bundle identifier, checked against every Pro transaction (`src/appStoreVerify.ts`). Defaults to `com.rudder.app` — confirm that's actually the Rudder target's `PRODUCT_BUNDLE_IDENTIFIER` and set this explicitly if it ever differs. |
 | `DECIDE_APPLE_ROOT_FINGERPRINT` | Overrides the pinned Apple Root CA - G3 fingerprint `src/appStoreVerify.ts` verifies every transaction chain against. Only ever set in tests; production should use the hardcoded default. |
+| `DECIDE_MONTHLY_FREE_SPEND_CEILING_USD` | The absolute ceiling on total estimated Free-tier AI spend per calendar month, across every install (`src/spendCeiling.ts`). Defaults to $30. Never applies to a verified Pro transaction. |
 
 ### Why the limits need Redis on a serverless host
 
@@ -284,6 +285,15 @@ Two pieces close it, both server-side:
   see `App/Services/InstallIdentity.swift`) per calendar month, Redis-backed
   like the rate limiter, and enforces `DECIDE_FREE_DEEP_DECISIONS_PER_MONTH`
   for any request that doesn't carry a verified Pro transaction.
+- **`src/spendCeiling.ts`** is the backstop the per-install quota alone
+  doesn't give: an absolute ceiling (`DECIDE_MONTHLY_FREE_SPEND_CEILING_USD`,
+  default $30) on *total* estimated Free-tier spend across every install,
+  every month. Enough simultaneous installs each spending their own small
+  quota can still add up past what the business can absorb before
+  conversion catches up — this is what makes the worst case a fixed, known
+  number instead of "however many people show up this month." It trips
+  independently of the per-install quota, applies to every complexity (not
+  just "complex"), and never applies to a verified Pro transaction.
 
 **What this does not (yet) solve:** identity itself. `appStoreVerify.ts` has
 only ever been exercised against a synthetic certificate chain built for its

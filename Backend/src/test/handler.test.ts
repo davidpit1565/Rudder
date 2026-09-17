@@ -4,6 +4,7 @@ import { handle } from "../handler.js";
 import { resetRateLimits, resolveClientKey } from "../rateLimit.js";
 import { resetConcurrency } from "../concurrency.js";
 import { resetDeepDecisionQuota } from "../quota.js";
+import { resetGlobalFreeSpend } from "../spendCeiling.js";
 import { AnalysisRequestSchema, SCHEMA_VERSION } from "../schema.js";
 import type { WireResponse } from "../schema.js";
 
@@ -230,6 +231,7 @@ test("a request with no identifiable client still gets a key", () => {
 
 test("a complex decision is capped per install once Free's monthly quota is spent", async () => {
   resetDeepDecisionQuota();
+  resetGlobalFreeSpend();
   resetConcurrency();
   const { analyse, release } = controllableAnalyse();
   release(); // let every analyse() call resolve immediately
@@ -246,10 +248,12 @@ test("a complex decision is capped per install once Free's monthly quota is spen
   assert.ok(Number(fourth.headers["Retry-After"]) > 0);
 
   resetDeepDecisionQuota();
+  resetGlobalFreeSpend();
 });
 
 test("a non-complex decision never touches the deep-decision quota", async () => {
   resetDeepDecisionQuota();
+  resetGlobalFreeSpend();
   resetConcurrency();
   const { analyse, release } = controllableAnalyse();
   release();
@@ -261,10 +265,12 @@ test("a non-complex decision never touches the deep-decision quota", async () =>
   }
 
   resetDeepDecisionQuota();
+  resetGlobalFreeSpend();
 });
 
 test("two installs never share a deep-decision quota bucket", async () => {
   resetDeepDecisionQuota();
+  resetGlobalFreeSpend();
   resetConcurrency();
   const { analyse, release } = controllableAnalyse();
   release();
@@ -279,10 +285,12 @@ test("two installs never share a deep-decision quota bucket", async () => {
   assert.equal(otherInstall.status, 200, "a different install starts with its own fresh quota");
 
   resetDeepDecisionQuota();
+  resetGlobalFreeSpend();
 });
 
 test("a failed complex analysis refunds the quota instead of spending it for nothing", async () => {
   resetDeepDecisionQuota();
+  resetGlobalFreeSpend();
   resetConcurrency();
   process.env.DECIDE_MAX_CONCURRENT_ANALYSES = "5";
 
@@ -299,4 +307,54 @@ test("a failed complex analysis refunds the quota instead of spending it for not
   delete process.env.DECIDE_MAX_CONCURRENT_ANALYSES;
   resetConcurrency();
   resetDeepDecisionQuota();
+  resetGlobalFreeSpend();
+});
+
+test("a global monthly Free-spend ceiling trips once total estimated spend crosses it, across every install", async () => {
+  resetDeepDecisionQuota();
+  resetGlobalFreeSpend();
+  resetConcurrency();
+  process.env.DECIDE_MONTHLY_FREE_SPEND_CEILING_USD = "0.10";
+  const { analyse, release } = controllableAnalyse();
+  release();
+
+  // Two different installs, well under either one's own per-install quota --
+  // the global ceiling is what should trip here, not quota.ts.
+  const first = await handle(
+    request({ headers: { "x-rudder-install-id": "spend-a" }, body: validBody({ complexity: "medium" }) }),
+    { analyse }
+  );
+  assert.equal(first.status, 200);
+
+  const second = await handle(
+    request({ headers: { "x-rudder-install-id": "spend-b" }, body: validBody({ complexity: "medium" }) }),
+    { analyse }
+  );
+  assert.equal(second.status, 503);
+  assert.equal(JSON.parse(second.body).error, "monthly_free_budget_exhausted");
+
+  delete process.env.DECIDE_MONTHLY_FREE_SPEND_CEILING_USD;
+  resetDeepDecisionQuota();
+  resetGlobalFreeSpend();
+});
+
+test("a verified Pro transaction is never subject to the Free-spend ceiling", async () => {
+  resetGlobalFreeSpend();
+  resetConcurrency();
+  process.env.DECIDE_MONTHLY_FREE_SPEND_CEILING_USD = "0"; // already exhausted, on purpose
+  const { analyse, release } = controllableAnalyse();
+  release();
+
+  // No real transaction header is presented here (that path is covered by
+  // appStoreVerify.test.ts's synthetic chain), so this exercises the other
+  // half: an *unverifiable* transaction header must fall back to the Free
+  // ceiling rather than silently granting Pro.
+  const stillFree = await handle(
+    request({ headers: { "x-rudder-transaction": "not-a-real-transaction" }, body: validBody({ complexity: "medium" }) }),
+    { analyse }
+  );
+  assert.equal(stillFree.status, 503, "an unverifiable transaction is not proof of Pro");
+
+  delete process.env.DECIDE_MONTHLY_FREE_SPEND_CEILING_USD;
+  resetGlobalFreeSpend();
 });
