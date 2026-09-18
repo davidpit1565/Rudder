@@ -87,10 +87,11 @@ RUDDER PRO
 Every decision gets the same analysis, free or paid: the same research, the same
 stress testing, the same self-challenge. Pro removes the limits.
 
-Free covers three research-heavy decisions a month and keeps your last ten in
-view. Pro makes both unlimited, and adds Decision Memory — which learns what you
-actually care about from decisions you have already made, stores only what you
-approve, and takes account of how those decisions turned out.
+Your first deep decision is always free, and your last ten decisions stay in
+view without Pro. A free trial lets you try Pro itself before paying. Pro makes
+deep decisions and history unlimited, and adds Decision Memory — which learns
+what you actually care about from decisions you have already made, stores only
+what you approve, and takes account of how those decisions turned out.
 
 Pro is a monthly or annual subscription. Payment is charged to your Apple Account
 at confirmation. It renews automatically unless cancelled at least 24 hours

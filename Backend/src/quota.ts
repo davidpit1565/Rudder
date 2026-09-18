@@ -16,17 +16,20 @@ import { isConfigured, pipeline } from "./redis.js";
  * (Backend/README.md's "Known gap" section covers the sibling gap, client
  * identity itself).
  *
- * Kept at 3, not cut to shrink cost: modeling the actual monthly trajectory
- * showed the per-install allowance barely affects total Free-tier spend once
- * `spendCeiling.ts`'s global ceiling exists -- that ceiling clips *aggregate*
- * cost regardless of whether each install is allowed 1 or 3 deep decisions,
- * so cutting this number bought almost no financial safety while making the
- * product meaningfully stingier. The ceiling (plus deferring fixed hosting
- * cost to $0 pre-revenue) is the lever that actually matters; see the
- * "Bootstrap" scenario in the Rudder Vision Model artifact for the traced
- * comparison.
+ * Set to 0, not a small positive number: a *recurring* monthly allowance
+ * (even a small one) is something a casual user can permanently settle into
+ * without ever converting -- there is no pressure to try Pro if "what I
+ * already have" never runs out in a way that matters to them. The first
+ * decision ever is still always free (see `AppEnvironment.canStartDecision`
+ * / `FeatureAccess.allowsDeepDecision`'s own `completedDecisionCount == 0`
+ * check) -- that is the product's one unconditional "try it" moment. Beyond
+ * that, the real try-before-you-buy mechanism is the App Store's own
+ * introductory free trial on the Pro subscription (see
+ * AppStore/subscriptions.md), not a recurring free allowance: a trial has a
+ * natural end and converts into a real subscription unless cancelled, so it
+ * doesn't have this same "good enough forever" failure mode.
  */
-export const DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH = 3;
+export const DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH = 0;
 
 export interface QuotaDecision {
   allowed: boolean;

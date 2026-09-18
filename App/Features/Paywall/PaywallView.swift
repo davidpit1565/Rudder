@@ -68,7 +68,7 @@ struct PaywallView: View {
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: RudderSpacing.s) {
                     PrimaryButton(
-                        title: "Start Pro",
+                        title: isSelectedProductTrialEligible ? "Start Free Trial" : "Start Pro",
                         isLoading: isPurchasing,
                         isEnabled: selectedProduct != nil
                     ) {
@@ -96,6 +96,10 @@ struct PaywallView: View {
         subscriptions.products.first { $0.id == selectedProductID }
     }
 
+    private var isSelectedProductTrialEligible: Bool {
+        subscriptions.introOfferEligibility[selectedProductID] ?? false
+    }
+
     private var header: some View {
         VStack(alignment: .leading, spacing: RudderSpacing.s) {
             Text(context.headline)
@@ -118,7 +122,7 @@ struct PaywallView: View {
         VStack(alignment: .leading, spacing: RudderSpacing.m) {
             benefit(
                 "Deep decisions, uncapped",
-                "Free covers \(FeatureAccess.freeDeepDecisionsPerMonth) of the research-heavy ones each month. Pro removes the cap."
+                "Your first one is always free. Pro removes the cap on every one after that."
             )
             benefit(
                 "Decision Memory",
@@ -181,7 +185,8 @@ struct PaywallView: View {
                         isSelected: product.id == selectedProductID,
                         savingPercentage: product.id == SubscriptionService.ProductID.annual
                             ? subscriptions.annualSavingPercentage
-                            : nil
+                            : nil,
+                        isTrialEligible: subscriptions.introOfferEligibility[product.id] ?? false
                     ) {
                         selectedProductID = product.id
                     }
@@ -245,6 +250,7 @@ private struct PlanRow: View {
     let product: Product
     let isSelected: Bool
     let savingPercentage: Int?
+    let isTrialEligible: Bool
     let action: () -> Void
 
     private var periodDescription: String {
@@ -260,6 +266,29 @@ private struct PlanRow: View {
         }
     }
 
+    /// The real terms of a free introductory offer, if this product has one and
+    /// this Apple Account hasn't already used it. Read straight from StoreKit --
+    /// never hard-coded, so a change in App Store Connect (or ineligibility)
+    /// shows up automatically. Only "free" offers are described here: the app
+    /// doesn't currently sell a pay-up-front or pay-as-you-go introductory price.
+    private func trialDescription(eligible: Bool) -> String? {
+        guard eligible,
+              let offer = product.subscription?.introductoryOffer,
+              offer.paymentMode == .freeTrial
+        else { return nil }
+        let unit = offer.period.unit
+        let value = offer.period.value
+        let length: String
+        switch unit {
+        case .day: length = value == 1 ? "1 day" : "\(value) days"
+        case .week: length = value == 1 ? "1 week" : "\(value) weeks"
+        case .month: length = value == 1 ? "1 month" : "\(value) months"
+        case .year: length = value == 1 ? "1 year" : "\(value) years"
+        @unknown default: length = ""
+        }
+        return "\(length) free, then \(product.displayPrice) \(periodDescription)"
+    }
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: RudderSpacing.m) {
@@ -270,7 +299,7 @@ private struct PlanRow: View {
                     Text(product.displayName)
                         .font(RudderFont.callout.weight(.semibold))
                         .foregroundStyle(RudderColor.primaryText)
-                    Text("\(product.displayPrice) \(periodDescription)")
+                    Text(trialDescription(eligible: isTrialEligible) ?? "\(product.displayPrice) \(periodDescription)")
                         .font(RudderFont.footnote)
                         .foregroundStyle(RudderColor.secondaryText)
                 }

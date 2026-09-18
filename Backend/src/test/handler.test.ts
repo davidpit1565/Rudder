@@ -311,6 +311,10 @@ test("a failed complex analysis refunds the quota instead of spending it for not
   resetAbsoluteSpend();
   resetConcurrency();
   process.env.DECIDE_MAX_CONCURRENT_ANALYSES = "5";
+  // Set explicitly: the shipped default is 0 (no recurring Free allowance beyond
+  // the first-ever decision), which would exhaust immediately and never reach the
+  // refund path this test is actually about.
+  process.env.DECIDE_FREE_DEEP_DECISIONS_PER_MONTH = "3";
 
   const failing = async (): Promise<WireResponse> => {
     throw new Error("boom");
@@ -323,6 +327,7 @@ test("a failed complex analysis refunds the quota instead of spending it for not
   }
 
   delete process.env.DECIDE_MAX_CONCURRENT_ANALYSES;
+  delete process.env.DECIDE_FREE_DEEP_DECISIONS_PER_MONTH;
   resetConcurrency();
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
