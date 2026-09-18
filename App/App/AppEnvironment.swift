@@ -9,15 +9,18 @@ import RudderFlow
 /// The rule that matters: nobody meets a paywall before they have had a real,
 /// finished decision out of RUDDER.
 enum FeatureAccess {
-    /// Deep decisions (the full research + analysis pipeline) per calendar month on Free.
-    /// Mirrors DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH in Backend/src/quota.ts, which
-    /// enforces the real ceiling server-side -- keep the two in sync by hand.
-    /// Kept at 3: modeling the actual monthly trajectory showed this number barely
-    /// affects total Free-tier spend once the backend's global spend ceiling
-    /// (spendCeiling.ts) exists -- that ceiling clips aggregate cost regardless of
-    /// this allowance, so cutting it bought almost no financial safety while making
-    /// the product meaningfully stingier.
-    static let freeDeepDecisionsPerMonth = 3
+    /// Deep decisions (the full research + analysis pipeline) per calendar month on Free,
+    /// beyond the one always-free first decision. Mirrors
+    /// DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH in Backend/src/quota.ts, which enforces the
+    /// real ceiling server-side -- keep the two in sync by hand.
+    /// Set to 0, not a small positive number: a recurring monthly allowance is something
+    /// a casual user can settle into permanently, with nothing ever pushing them toward
+    /// Pro. The first decision stays unconditionally free (see `allowsDeepDecision`'s own
+    /// `completedDecisionCount == 0` check); beyond that, the real "try it" mechanism is
+    /// the App Store's introductory free trial on the Pro subscription, which has a
+    /// natural end and converts to a real subscription unless cancelled -- unlike a
+    /// standing free allowance, it can't be "good enough forever."
+    static let freeDeepDecisionsPerMonth = 0
     /// How far back Free history goes.
     static let freeHistoryLimit = 10
 

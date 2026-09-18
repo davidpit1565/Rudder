@@ -53,6 +53,11 @@ final class SubscriptionService {
     private(set) var products: [Product] = []
     private(set) var isLoadingProducts = false
     private(set) var productLoadFailed = false
+    /// Whether this Apple Account can still redeem each product's introductory
+    /// offer -- false once it's been used before, on this or another subscription
+    /// in the same group. Read fresh per load rather than assumed, so the paywall
+    /// never promises a trial that StoreKit won't actually grant.
+    private(set) var introOfferEligibility: [String: Bool] = [:]
 
     /// The single question the rest of the app asks.
     var isPro: Bool { entitlement.grantsPro }
@@ -92,9 +97,19 @@ final class SubscriptionService {
                 lhs.id == ProductID.monthly && rhs.id == ProductID.annual
             }
             productLoadFailed = loaded.isEmpty
+            await loadIntroOfferEligibility()
         } catch {
             productLoadFailed = true
         }
+    }
+
+    private func loadIntroOfferEligibility() async {
+        var eligibility: [String: Bool] = [:]
+        for product in products {
+            guard let subscription = product.subscription else { continue }
+            eligibility[product.id] = await subscription.isEligibleForIntroOffer
+        }
+        introOfferEligibility = eligibility
     }
 
     /// The signed JWS of the current Pro entitlement's transaction, sent to the

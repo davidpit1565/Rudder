@@ -17,14 +17,13 @@ final class EntitlementTests: XCTestCase {
         )
     }
 
-    func testFreeUsersGetAMonthlyAllowanceOfDeepDecisions() {
-        XCTAssertTrue(FeatureAccess.allowsDeepDecision(isPro: false, completedDecisionCount: 4, deepDecisionsThisMonth: 0))
+    func testFreeUsersGetNoRecurringDeepDecisionAllowanceAfterTheFirst() {
+        // Beyond the one always-free first decision, Free has no standing monthly
+        // allowance -- the try-before-you-buy mechanism is the Pro trial, not a
+        // recurring free quota a casual user could settle into permanently.
+        XCTAssertEqual(FeatureAccess.freeDeepDecisionsPerMonth, 0)
         XCTAssertFalse(
-            FeatureAccess.allowsDeepDecision(
-                isPro: false,
-                completedDecisionCount: 4,
-                deepDecisionsThisMonth: FeatureAccess.freeDeepDecisionsPerMonth
-            )
+            FeatureAccess.allowsDeepDecision(isPro: false, completedDecisionCount: 4, deepDecisionsThisMonth: 0)
         )
     }
 
