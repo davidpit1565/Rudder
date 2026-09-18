@@ -12,3 +12,11 @@ SWIFT_ACTIVE_COMPILATION_CONDITIONS =
 // Production backend (Vercel). Host only — Shared.xcconfig's $(HTTPS) macro
 // supplies the "https://" scheme, so no scheme/protocol prefix goes here.
 RUDDER_API_HOST = decide-mu-navy.vercel.app
+
+// Live Privacy Policy / Terms of Use / Support pages, served as static files
+// from the same Vercel deployment (Backend/public/*.html) — no separate
+// hosting needed. The support-address placeholder inside those pages still
+// needs a real, monitored inbox before submission; see Backend/public/*.html.
+RUDDER_PRIVACY_POLICY_HOST = decide-mu-navy.vercel.app/privacy.html
+RUDDER_TERMS_HOST = decide-mu-navy.vercel.app/terms.html
+RUDDER_SUPPORT_HOST = decide-mu-navy.vercel.app/support.html

@@ -3,8 +3,13 @@
 Seven screenshots, in this order. Each one makes a single claim, and the claim is
 true of the build being submitted.
 
-Sizes: 6.9" (1320 × 2868) and 6.5" (1242 × 2688) are the two Apple currently
-requires for iPhone — confirm in App Store Connect at submission.
+Sizes: as of 2026, Apple requires screenshots only for the largest display per
+device family and scales them down for smaller ones. Rudder is iPhone-only
+(`TARGETED_DEVICE_FAMILY = 1` in `Config/Shared.xcconfig` — no iPad support),
+so only the **6.9" iPhone** size is required: 1320 × 2868, 1290 × 2796, or
+1260 × 2736 px, portrait. No 6.5" or iPad screenshots are needed unless iPad
+support is added later — confirm in App Store Connect at submission, since
+Apple's accepted sizes have changed before and can again.
 
 | # | Screen | Caption | What must be visible |
 |---|---|---|---|
