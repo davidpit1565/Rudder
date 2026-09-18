@@ -50,12 +50,16 @@ export const DEFAULT_MONTHLY_FREE_SPEND_CEILING_USD = 12;
  * real cost (a paying customer briefly throttled) but a bounded and visible
  * one, chosen deliberately over an unbounded one.
  *
- * Kept low ($30) while there is no real Pro revenue yet -- raise it as
- * revenue grows, since a ceiling set below what legitimate Pro traffic
- * actually costs will start throttling paying customers under normal use,
- * not just in an emergency.
+ * Set to $5 by explicit choice, not a rough guess: at pre-revenue,
+ * zero-Pro-subscriber stage there is no real Pro cost to accommodate yet, so
+ * the ceiling can sit at the actual maximum the business is willing to lose
+ * in the worst month, full stop. This WILL throttle real Pro traffic the
+ * moment usage costs more than $5/month combined across every subscriber --
+ * that is expected and correct at this stage, not a bug. Raise it the
+ * moment there are real paying subscribers to serve; a ceiling left here
+ * after that point stops being a safety net and starts being an outage.
  */
-export const DEFAULT_MONTHLY_ABSOLUTE_SPEND_CEILING_USD = 30;
+export const DEFAULT_MONTHLY_ABSOLUTE_SPEND_CEILING_USD = 5;
 
 export interface SpendCeilingDecision {
   allowed: boolean;
