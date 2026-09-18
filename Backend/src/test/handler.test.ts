@@ -4,9 +4,14 @@ import { handle } from "../handler.js";
 import { resetRateLimits, resolveClientKey } from "../rateLimit.js";
 import { resetConcurrency } from "../concurrency.js";
 import { resetDeepDecisionQuota } from "../quota.js";
-import { resetGlobalFreeSpend } from "../spendCeiling.js";
+import { resetGlobalFreeSpend, resetAbsoluteSpend } from "../spendCeiling.js";
 import { AnalysisRequestSchema, SCHEMA_VERSION } from "../schema.js";
 import type { WireResponse } from "../schema.js";
+import { buildJws, validPayload, withTestAppleRoot } from "./fixtures/appleTransaction.js";
+
+function verifiedProHeaders(): Record<string, string> {
+  return { "x-rudder-transaction": buildJws(validPayload()) };
+}
 
 /** A fake analyse() whose completion this test controls, so it can hold a
  * concurrency slot open on purpose instead of racing a real timer. */
@@ -232,6 +237,7 @@ test("a request with no identifiable client still gets a key", () => {
 test("a complex decision is capped per install once Free's monthly quota is spent", async () => {
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
+  resetAbsoluteSpend();
   resetConcurrency();
   // Set explicitly so this test's expectations don't silently drift if the
   // shipped default ever changes.
@@ -253,11 +259,13 @@ test("a complex decision is capped per install once Free's monthly quota is spen
   delete process.env.DECIDE_FREE_DEEP_DECISIONS_PER_MONTH;
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
+  resetAbsoluteSpend();
 });
 
 test("a non-complex decision never touches the deep-decision quota", async () => {
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
+  resetAbsoluteSpend();
   resetConcurrency();
   const { analyse, release } = controllableAnalyse();
   release();
@@ -270,11 +278,13 @@ test("a non-complex decision never touches the deep-decision quota", async () =>
 
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
+  resetAbsoluteSpend();
 });
 
 test("two installs never share a deep-decision quota bucket", async () => {
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
+  resetAbsoluteSpend();
   resetConcurrency();
   process.env.DECIDE_FREE_DEEP_DECISIONS_PER_MONTH = "3";
   const { analyse, release } = controllableAnalyse();
@@ -292,11 +302,13 @@ test("two installs never share a deep-decision quota bucket", async () => {
   delete process.env.DECIDE_FREE_DEEP_DECISIONS_PER_MONTH;
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
+  resetAbsoluteSpend();
 });
 
 test("a failed complex analysis refunds the quota instead of spending it for nothing", async () => {
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
+  resetAbsoluteSpend();
   resetConcurrency();
   process.env.DECIDE_MAX_CONCURRENT_ANALYSES = "5";
 
@@ -314,11 +326,13 @@ test("a failed complex analysis refunds the quota instead of spending it for not
   resetConcurrency();
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
+  resetAbsoluteSpend();
 });
 
 test("a global monthly Free-spend ceiling trips once total estimated spend crosses it, across every install", async () => {
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
+  resetAbsoluteSpend();
   resetConcurrency();
   process.env.DECIDE_MONTHLY_FREE_SPEND_CEILING_USD = "0.10";
   const { analyse, release } = controllableAnalyse();
@@ -342,10 +356,12 @@ test("a global monthly Free-spend ceiling trips once total estimated spend cross
   delete process.env.DECIDE_MONTHLY_FREE_SPEND_CEILING_USD;
   resetDeepDecisionQuota();
   resetGlobalFreeSpend();
+  resetAbsoluteSpend();
 });
 
 test("a verified Pro transaction is never subject to the Free-spend ceiling", async () => {
   resetGlobalFreeSpend();
+  resetAbsoluteSpend();
   resetConcurrency();
   process.env.DECIDE_MONTHLY_FREE_SPEND_CEILING_USD = "0"; // already exhausted, on purpose
   const { analyse, release } = controllableAnalyse();
@@ -363,4 +379,77 @@ test("a verified Pro transaction is never subject to the Free-spend ceiling", as
 
   delete process.env.DECIDE_MONTHLY_FREE_SPEND_CEILING_USD;
   resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+});
+
+test("the absolute spend ceiling trips even for a verified Pro transaction", async () => {
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+  resetConcurrency();
+  process.env.DECIDE_MONTHLY_ABSOLUTE_SPEND_CEILING_USD = "0.10";
+  const { analyse, release } = controllableAnalyse();
+  release();
+
+  const first = await withTestAppleRoot(() =>
+    handle(request({ headers: verifiedProHeaders(), body: validBody({ complexity: "medium" }) }), { analyse })
+  );
+  assert.equal(first.status, 200, "the first request fits under the ceiling");
+
+  const second = await withTestAppleRoot(() =>
+    handle(request({ headers: verifiedProHeaders(), body: validBody({ complexity: "medium" }) }), { analyse })
+  );
+  assert.equal(second.status, 503, "a verified Pro transaction gets no exception from the absolute ceiling");
+  assert.equal(JSON.parse(second.body).error, "monthly_ai_budget_exhausted");
+  assert.ok(Number(second.headers["Retry-After"]) > 0);
+
+  delete process.env.DECIDE_MONTHLY_ABSOLUTE_SPEND_CEILING_USD;
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+});
+
+test("the absolute spend ceiling is shared between Free and Pro traffic", async () => {
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+  resetConcurrency();
+  process.env.DECIDE_MONTHLY_ABSOLUTE_SPEND_CEILING_USD = "0.10";
+  const { analyse, release } = controllableAnalyse();
+  release();
+
+  const freeRequest = await handle(
+    request({ headers: { "x-rudder-install-id": "absolute-shared-free" }, body: validBody({ complexity: "medium" }) }),
+    { analyse }
+  );
+  assert.equal(freeRequest.status, 200);
+
+  const proRequest = await withTestAppleRoot(() =>
+    handle(request({ headers: verifiedProHeaders(), body: validBody({ complexity: "medium" }) }), { analyse })
+  );
+  assert.equal(proRequest.status, 503, "Free spend already used up the shared absolute ceiling");
+  assert.equal(JSON.parse(proRequest.body).error, "monthly_ai_budget_exhausted");
+
+  delete process.env.DECIDE_MONTHLY_ABSOLUTE_SPEND_CEILING_USD;
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+});
+
+test("a failed Pro analysis refunds the absolute ceiling instead of spending it for nothing", async () => {
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+  resetConcurrency();
+  process.env.DECIDE_MONTHLY_ABSOLUTE_SPEND_CEILING_USD = "0.10";
+
+  const failing = async (): Promise<WireResponse> => {
+    throw new Error("boom");
+  };
+
+  for (let i = 0; i < 5; i++) {
+    const response = await withTestAppleRoot(() =>
+      handle(request({ headers: verifiedProHeaders(), body: validBody({ complexity: "medium" }) }), { analyse: failing })
+    );
+    assert.equal(response.status, 500, "every attempt fails, but none should exhaust the absolute ceiling");
+  }
+
+  delete process.env.DECIDE_MONTHLY_ABSOLUTE_SPEND_CEILING_USD;
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
 });

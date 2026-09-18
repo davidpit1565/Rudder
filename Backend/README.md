@@ -39,7 +39,7 @@ iPhone  ->  POST /v1/decisions/analyze  ->  Anthropic API  ->  validated JSON  -
 ```bash
 cp .env.example .env     # add your ANTHROPIC_API_KEY
 npm install
-npm test                 # 80 tests, no network, no spend
+npm test                 # 83 tests, no network, no spend
 npm run build && npm start
 ```
 
@@ -69,6 +69,7 @@ Set in the environment, never in code:
 | `DECIDE_BUNDLE_ID` | The app's bundle identifier, checked against every Pro transaction (`src/appStoreVerify.ts`). Defaults to `com.rudder.app` — confirm that's actually the Rudder target's `PRODUCT_BUNDLE_IDENTIFIER` and set this explicitly if it ever differs. |
 | `DECIDE_APPLE_ROOT_FINGERPRINT` | Overrides the pinned Apple Root CA - G3 fingerprint `src/appStoreVerify.ts` verifies every transaction chain against. Only ever set in tests; production should use the hardcoded default. |
 | `DECIDE_MONTHLY_FREE_SPEND_CEILING_USD` | The absolute ceiling on total estimated Free-tier AI spend per calendar month, across every install (`src/spendCeiling.ts`). Defaults to $12 -- kept tight at bootstrap-stage volume, since this plus fixed hosting cost is the real monthly floor a small payer base has to outrun. Raise it once real conversion data justifies carrying more cost. Never applies to a verified Pro transaction. |
+| `DECIDE_MONTHLY_ABSOLUTE_SPEND_CEILING_USD` | A second, absolute ceiling that counts *every* request, a verified Pro transaction included (`src/spendCeiling.ts`). The guarantee that total company-wide AI spend for a calendar month can never exceed a chosen number, no matter what -- a verification bug, a future free-trial period, or one subscriber running far more decisions than their plan assumes. Defaults to $30. Raise it as real Pro revenue grows: set below what legitimate Pro traffic actually costs, it throttles paying customers under normal use, not just in an emergency. |
 
 ### Why the limits need Redis on a serverless host
 
@@ -294,6 +295,20 @@ Two pieces close it, both server-side:
   number instead of "however many people show up this month." It trips
   independently of the per-install quota, applies to every complexity (not
   just "complex"), and never applies to a verified Pro transaction.
+- The same file also enforces a *second*, absolute ceiling
+  (`DECIDE_MONTHLY_ABSOLUTE_SPEND_CEILING_USD`, default $30) that counts
+  every request, a verified Pro transaction included. The Free-only ceiling
+  above assumes Pro traffic always pays for its own cost — true under normal
+  use, but not something to bet the business on unconditionally (a
+  verification bug, a future free-trial period that counts as "Pro" before
+  any charge lands, or one subscriber running far more decisions than their
+  plan assumes could all put real, unbudgeted cost on the Pro side). This
+  ceiling has no such exception: total company-wide AI spend for a calendar
+  month cannot exceed it, full stop — including refusing a verified Pro
+  request in the pathological case where it trips. Together with the
+  Free-only ceiling, this is the concrete answer to "how much could this
+  ever cost us in the worst month" — a fixed, chosen number, not an open
+  question.
 
 **What this does not (yet) solve:** identity itself. `appStoreVerify.ts` has
 only ever been exercised against a synthetic certificate chain built for its
