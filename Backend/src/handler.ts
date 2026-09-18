@@ -10,8 +10,11 @@ import { checkDeepDecisionQuota, refundDeepDecisionQuota, DEFAULT_FREE_DEEP_DECI
 import {
   checkGlobalFreeSpendCeiling,
   refundGlobalFreeSpend,
+  checkAbsoluteSpendCeiling,
+  refundAbsoluteSpend,
   ESTIMATED_COST_USD,
   DEFAULT_MONTHLY_FREE_SPEND_CEILING_USD,
+  DEFAULT_MONTHLY_ABSOLUTE_SPEND_CEILING_USD,
 } from "./spendCeiling.js";
 
 // Mirrors SubscriptionService.ProductID in App/Services/SubscriptionService.swift.
@@ -113,7 +116,27 @@ export async function handle(
     : null;
 
   let deepQuotaInstallId: string | null = null;
-  let spentEstimate = 0;
+  let freeSpentEstimate = 0;
+  let absoluteSpentEstimate = 0;
+
+  // The absolute ceiling applies to every request, a verified Pro transaction
+  // included -- see spendCeiling.ts for why the Free-only ceiling below isn't
+  // enough on its own. This runs first: nothing spends money before it's
+  // known to fit under the company-wide monthly bound.
+  {
+    const estimatedCost = ESTIMATED_COST_USD[parsed.data.complexity];
+    const absoluteCeiling = Number(
+      process.env.DECIDE_MONTHLY_ABSOLUTE_SPEND_CEILING_USD ?? DEFAULT_MONTHLY_ABSOLUTE_SPEND_CEILING_USD
+    );
+    const absolute = await checkAbsoluteSpendCeiling(estimatedCost, absoluteCeiling);
+    if (!absolute.allowed) {
+      // A calendar-month circuit breaker, not a permanent shutoff: the
+      // ceiling resets next month. No exception for verified Pro here --
+      // that's the entire point of this ceiling.
+      return json(503, { error: "monthly_ai_budget_exhausted" }, { "Retry-After": "3600" });
+    }
+    absoluteSpentEstimate = estimatedCost;
+  }
 
   if (!verifiedPro) {
     const estimatedCost = ESTIMATED_COST_USD[parsed.data.complexity];
@@ -124,16 +147,18 @@ export async function handle(
     if (!spend.allowed) {
       // A calendar-month circuit breaker, not a permanent shutoff: the ceiling
       // resets next month, and a verified Pro transaction is never subject to it.
+      await refundAbsoluteSpend(absoluteSpentEstimate);
       return json(503, { error: "monthly_free_budget_exhausted" }, { "Retry-After": "3600" });
     }
-    spentEstimate = estimatedCost;
+    freeSpentEstimate = estimatedCost;
 
     if (parsed.data.complexity === "complex") {
       const installId = sanitizeInstallId(request.headers["x-rudder-install-id"]) ?? request.clientKey;
       const limit = Number(process.env.DECIDE_FREE_DEEP_DECISIONS_PER_MONTH ?? DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH);
       const quota = await checkDeepDecisionQuota(installId, limit);
       if (!quota.allowed) {
-        await refundGlobalFreeSpend(spentEstimate);
+        await refundGlobalFreeSpend(freeSpentEstimate);
+        await refundAbsoluteSpend(absoluteSpentEstimate);
         return json(429, { error: "deep_decision_limit_reached" }, { "Retry-After": String(quota.retryAfterSeconds) });
       }
       deepQuotaInstallId = installId;
@@ -142,7 +167,8 @@ export async function handle(
 
   async function refundSpend(): Promise<void> {
     if (deepQuotaInstallId) await refundDeepDecisionQuota(deepQuotaInstallId);
-    if (spentEstimate > 0) await refundGlobalFreeSpend(spentEstimate);
+    if (freeSpentEstimate > 0) await refundGlobalFreeSpend(freeSpentEstimate);
+    if (absoluteSpentEstimate > 0) await refundAbsoluteSpend(absoluteSpentEstimate);
   }
 
   // A ceiling on how many analyses can be in flight at once, independent of
