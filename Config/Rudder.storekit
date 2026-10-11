@@ -32,7 +32,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.rudder.app.pro.monthly",
+          "productID" : "com.davidpitchkhadze.rudder.pro.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "RUDDER Pro Monthly",
           "subscriptionGroupID" : "21500001",
@@ -57,7 +57,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.rudder.app.pro.annual",
+          "productID" : "com.davidpitchkhadze.rudder.pro.annual",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "RUDDER Pro Annual",
           "subscriptionGroupID" : "21500001",

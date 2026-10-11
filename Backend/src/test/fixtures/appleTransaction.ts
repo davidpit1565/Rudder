@@ -20,8 +20,8 @@ MVTxMoFxlxsiopmfShv/VEdg6I6hRANCAASSrpnEKvtb1P6SINRVYDjMeQJM57nG
 rcYVWgyRQ5p0nkJCjs+UfXFZVZ91K55Xq3SrQdv4pb6ZtC+13p5x0LaF
 -----END PRIVATE KEY-----`;
 
-export const BUNDLE_ID = "com.rudder.app";
-export const PRODUCT_IDS = ["com.rudder.app.pro.monthly", "com.rudder.app.pro.annual"] as const;
+export const BUNDLE_ID = "com.davidpitchkhadze.rudder";
+export const PRODUCT_IDS = ["com.davidpitchkhadze.rudder.pro.monthly", "com.davidpitchkhadze.rudder.pro.annual"] as const;
 
 export function base64Url(input: Buffer | string): string {
   const buf = typeof input === "string" ? Buffer.from(input, "utf8") : input;
@@ -41,7 +41,7 @@ export function buildJws(payload: Record<string, unknown>, opts: { chain?: strin
 export function validPayload(overrides: Record<string, unknown> = {}) {
   return {
     bundleId: BUNDLE_ID,
-    productId: "com.rudder.app.pro.monthly",
+    productId: "com.davidpitchkhadze.rudder.pro.monthly",
     type: "Auto-Renewable Subscription",
     expiresDate: Date.now() + 30 * 24 * 60 * 60 * 1000,
     ...overrides,
