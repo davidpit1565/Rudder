@@ -6,5 +6,8 @@ GCC_OPTIMIZATION_LEVEL = 0
 ONLY_ACTIVE_ARCH = YES
 ENABLE_TESTABILITY = YES
 
-// Point at a locally running backend while developing.
-// RUDDER_API_HOST = localhost:8787
+// Empty by default, Debug builds show "RUDDER isn't connected yet" and every
+// analysis/Pro-verification call fails -- there is no separate staging backend
+// yet, so point Debug at the same production Vercel deployment Release uses.
+// Swap this for localhost:8787 (uncommented) when running the backend locally.
+RUDDER_API_HOST = decide-mu-navy.vercel.app
