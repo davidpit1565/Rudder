@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { budgetFor, MODEL } from "../budget.js";
+import { budgetFor, PREMIUM_MODEL, STANDARD_MODEL } from "../budget.js";
 import { AnalysisRequestSchema, SCHEMA_VERSION } from "../schema.js";
 
 function makeRequest(overrides: Record<string, unknown> = {}) {
@@ -24,16 +24,24 @@ test("a trivial decision buys no research and the cheapest effort", () => {
   );
   assert.equal(budget.maxSearches, 0);
   assert.equal(budget.effort, "low");
-  assert.equal(budget.model, MODEL);
+  assert.equal(budget.model, STANDARD_MODEL);
 });
 
-test("a complex decision gets the full pipeline", () => {
+test("a complex decision gets the full pipeline, on the premium model", () => {
   const budget = budgetFor(
     makeRequest({ complexity: "complex", researchLevel: "deep", maximumResearchCalls: 6, questionCeiling: 5 })
   );
   assert.equal(budget.effort, "high");
   assert.equal(budget.maxSearches, 6);
   assert.equal(budget.questionsRemaining, 5);
+  assert.equal(budget.model, PREMIUM_MODEL);
+});
+
+test("simple and medium decisions run on the standard model, free and unlimited", () => {
+  for (const complexity of ["simple", "medium"] as const) {
+    const budget = budgetFor(makeRequest({ complexity }));
+    assert.equal(budget.model, STANDARD_MODEL);
+  }
 });
 
 test("the app's cap wins when it is lower than the level's", () => {
