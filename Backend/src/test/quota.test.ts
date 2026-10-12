@@ -38,6 +38,14 @@ test("a refund gives back exactly one spend", async () => {
   assert.equal(again.allowed, true, "the refunded spend should be available again");
 });
 
+test("with the shipped default of 0, the first spend is still free, the second is not", async () => {
+  const now = Date.now();
+  const first = await checkDeepDecisionQuota("install-g", 0, now);
+  assert.equal(first.allowed, true, "the one unconditional free decision must go through");
+  const second = await checkDeepDecisionQuota("install-g", 0, now);
+  assert.equal(second.allowed, false, "a recurring free allowance must not exist beyond the first");
+});
+
 test("a new calendar month starts a fresh count", async () => {
   const monthOne = Date.UTC(2026, 0, 15);
   const monthTwo = Date.UTC(2026, 1, 3);
