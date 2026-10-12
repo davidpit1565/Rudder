@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import { AnalysisRequestSchema } from "./schema.js";
 import { analyse as defaultAnalyse, AnalysisError } from "./analyze.js";
 import { checkRateLimit, checkDailyLimit } from "./rateLimit.js";
@@ -43,13 +43,13 @@ export interface HandlerDependencies {
   analyse?: typeof defaultAnalyse;
 }
 
-let cachedClient: Anthropic | null = null;
+let cachedClient: GoogleGenAI | null = null;
 
-function getClient(): Anthropic {
+function getClient(): GoogleGenAI {
   if (!cachedClient) {
     // The credential lives here and only here. It is read from the environment
     // and never echoed into a response or a log line.
-    cachedClient = new Anthropic();
+    cachedClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   }
   return cachedClient;
 }

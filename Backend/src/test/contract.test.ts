@@ -12,10 +12,9 @@ import { AnalysisRequestSchema } from "../schema.js";
 const here = dirname(fileURLToPath(import.meta.url));
 
 test("the prompted output format embeds the real contract, not a stale copy", () => {
-  // Confirmed live: Anthropic's grammar-constrained structured output rejects
-  // this schema outright ("compiled grammar is too large"), so the contract is
-  // asked for by instruction instead (see analyze.ts) -- this only confirms
-  // the embedded schema is the actual one, not a hand-copied string that could
+  // The contract is asked for by instruction, not a provider's native
+  // structured-output mode (see prompt.ts for why) -- this only confirms the
+  // embedded schema is the actual one, not a hand-copied string that could
   // drift from it.
   const embeddedSchema = JSON.parse(
     OUTPUT_FORMAT_INSTRUCTIONS.slice(OUTPUT_FORMAT_INSTRUCTIONS.indexOf("{"))

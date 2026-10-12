@@ -22,13 +22,23 @@ line of code.
   end** — the serverless function had no `maxDuration`, so a real decision
   could be killed mid-request; the free-tier quota rejected even the first
   (meant to be unconditionally free) deep decision at the shipped limit of 0;
-  and a "complex" decision's two sequential premium-model calls (research,
-  then analysis) could still blow past the 60s ceiling at the original
-  6-search/16000-token budget — trimmed to 4 searches/12000 tokens with
-  margin. All three fixed and confirmed live. A real content bug was also
-  found and fixed: the trade-off sentence ("You're giving up X to get Y.")
-  could read "...X. to get Y.." when the model's own `gaining`/`givingUp`
-  text already carried a trailing period.
+  and a "complex" decision's two sequential model calls (research, then
+  analysis) could still blow past the 60s ceiling at the original budget —
+  trimmed down. All three fixed and confirmed live. A real content bug was
+  also found and fixed: the trade-off sentence ("You're giving up X to get
+  Y.") could read "...X. to get Y.." when the model's own
+  `gaining`/`givingUp` text already carried a trailing period.
+- **Switched AI provider, from Anthropic to Google's Gemini API** — the
+  Anthropic account backing production ran out of its prepaid credit balance
+  mid-launch, silently failing every decision (not just complex ones) with
+  no warning. Gemini has no equivalent failure mode: its free tier is
+  genuinely free (rate-limited, not billed), and its paid tier is real
+  pay-as-you-go against a linked card rather than a balance to manually top
+  up. `Backend/src/budget.ts` now runs `gemini-3.5-flash-lite` (simple,
+  medium) and `gemini-3.8-flash` (complex); see `Backend/README.md`'s "Cost"
+  section. **Needs you:** decide free vs. paid tier for the production
+  `GEMINI_API_KEY` before launch — see item 6 below, it changes what the
+  privacy policy has to say.
 
 ## Needs you
 
@@ -59,6 +69,26 @@ line of code.
    actual financial risk regardless. `Backend/src/attest.ts` is the hook for
    implementing this properly later; see the "Known gap" section in
    `Backend/README.md`.
+
+6. **Set `GEMINI_API_KEY` in Vercel and pick a tier** — the old
+   `ANTHROPIC_API_KEY` is gone from the code; production needs a real
+   `GEMINI_API_KEY` (Project Settings → Environment Variables) before any
+   decision will work. Get one at
+   [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
+   Two real choices, not just a formality:
+   - **Free tier** (no billing account attached) — genuinely $0, but
+     Google's own terms permit it to use the decision text you send to
+     improve its products, with human reviewers able to read it.
+     `Backend/public/privacy.html` and `AppStore/privacy.md` are already
+     written to disclose this honestly for this tier.
+   - **Paid tier** (a Cloud Billing account with a card attached, no plan
+     change needed otherwise) — real pay-as-you-go, a few cents per 1,000
+     decisions at these models' prices, and Google does not use the content
+     to improve its products. If you switch, update both privacy documents
+     to drop the free-tier training disclosure before submitting.
+   Given Rudder analyses people's personal decisions, the paid tier is the
+   safer default the moment it's convenient to set up — but the free tier is
+   enough to get the app working and tested right now.
 
 ## Before you archive
 
