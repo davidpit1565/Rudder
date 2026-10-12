@@ -10,7 +10,7 @@ domain that only the account owner can provide.
    provisioning profiles are committed.
 
 2. **Bundle identifier**
-   `com.rudder.app` is the placeholder in `Config/Shared.xcconfig`. Change it to
+   `com.davidpitchkhadze.rudder` is the placeholder in `Config/Shared.xcconfig`. Change it to
    one your team owns, in that one file, and register it in App Store Connect
    with **In-App Purchase** enabled.
 

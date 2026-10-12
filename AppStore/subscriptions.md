@@ -7,8 +7,8 @@ Connect exactly:
 
 | Product | Identifier | Duration |
 |---|---|---|
-| RUDDER Pro Monthly | `com.rudder.app.pro.monthly` | 1 month |
-| RUDDER Pro Annual | `com.rudder.app.pro.annual` | 1 year |
+| RUDDER Pro Monthly | `com.davidpitchkhadze.rudder.pro.monthly` | 1 month |
+| RUDDER Pro Annual | `com.davidpitchkhadze.rudder.pro.annual` | 1 year |
 
 Both belong to one subscription group (**RUDDER Pro**) so a user can move between
 them without holding two subscriptions.

@@ -10,7 +10,7 @@ import RudderFlow
 /// is a Darwin-only Foundation API and so cannot live in RudderKit, which also
 /// has to build on Linux CI.
 enum WidgetBridge {
-    static let appGroupIdentifier = "group.com.rudder.app"
+    static let appGroupIdentifier = "group.com.davidpitchkhadze.rudder"
     private static let fileName = "widget_snapshot.json"
 
     private static var fileURL: URL? {

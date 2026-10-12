@@ -3,12 +3,17 @@ import type { AnalysisRequest } from "./schema.js";
 /**
  * What one decision is allowed to spend.
  *
- * Effort is the cost lever rather than a cheaper model: a single model keeps one
- * cache namespace and one set of API semantics, and low effort on the current
- * model beats a downgrade on quality per unit of spend. The app has already
- * classified the decision; this only ever narrows what the app asked for.
+ * Model choice is the primary cost lever, split exactly on the Free/Pro boundary
+ * the app already enforces: a complex ("deep") decision is the one that needs
+ * Pro or the trial, so it's the only one that runs on the premium model. Simple
+ * and medium decisions are free and unlimited for everyone, and run on the
+ * cheap/fast model — real analysis, a small fraction of the per-call cost, so
+ * the free tier stays genuinely generous without moving the $5/month ceiling.
+ * Effort (reasoning depth, tokens, searches) is still the secondary lever
+ * within whichever model a request gets.
  */
-export const MODEL = "claude-opus-5";
+export const PREMIUM_MODEL = "claude-opus-5";
+export const STANDARD_MODEL = "claude-haiku-5-5";
 
 export type Effort = "low" | "medium" | "high";
 
@@ -39,5 +44,7 @@ export function budgetFor(request: AnalysisRequest): Budget {
     Math.min(request.questionCeiling - request.questionsAlreadyAsked, 5)
   );
 
-  return { model: MODEL, effort, maxTokens, maxSearches, questionsRemaining };
+  const model = request.complexity === "complex" ? PREMIUM_MODEL : STANDARD_MODEL;
+
+  return { model, effort, maxTokens, maxSearches, questionsRemaining };
 }

@@ -18,10 +18,10 @@ import {
 } from "./spendCeiling.js";
 
 // Mirrors SubscriptionService.ProductID in App/Services/SubscriptionService.swift.
-const PRO_PRODUCT_IDS = ["com.rudder.app.pro.monthly", "com.rudder.app.pro.annual"] as const;
+const PRO_PRODUCT_IDS = ["com.davidpitchkhadze.rudder.pro.monthly", "com.davidpitchkhadze.rudder.pro.annual"] as const;
 // Best-effort default -- confirm against the Rudder target's actual
 // PRODUCT_BUNDLE_IDENTIFIER and set DECIDE_BUNDLE_ID explicitly if it differs.
-const BUNDLE_ID = process.env.DECIDE_BUNDLE_ID ?? "com.rudder.app";
+const BUNDLE_ID = process.env.DECIDE_BUNDLE_ID ?? "com.davidpitchkhadze.rudder";
 
 export interface HandlerRequest {
   method: string;

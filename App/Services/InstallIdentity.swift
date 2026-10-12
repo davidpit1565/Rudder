@@ -7,7 +7,7 @@ import Foundation
 /// request claims about itself (see the "Known gap" section of
 /// `Backend/README.md`, and `Backend/src/quota.ts`).
 enum InstallIdentity {
-    private static let key = "com.rudder.app.installId"
+    private static let key = "com.davidpitchkhadze.rudder.installId"
 
     static var current: String {
         if let existing = UserDefaults.standard.string(forKey: key) {

@@ -24,7 +24,7 @@ HOW TO SEE THE FULL FLOW
    and the controls to delete decisions, memory, outcomes, or everything.
 
 SUBSCRIPTION
-RUDDER Pro (monthly com.rudder.app.pro.monthly, annual com.rudder.app.pro.annual)
+RUDDER Pro (monthly com.davidpitchkhadze.rudder.pro.monthly, annual com.davidpitchkhadze.rudder.pro.annual)
 adds deeper research, more analysis, Decision Memory and full history. The paywall
 is reachable at any time from Profile > Your plan > See Pro, and Restore Purchases
 is on both the paywall and the Profile tab. The first decision is never blocked.

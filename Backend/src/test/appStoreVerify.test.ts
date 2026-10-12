@@ -20,7 +20,7 @@ test("a validly signed transaction, from the pinned root, verifies", () => {
   const jws = buildJws(validPayload());
   const result = verify(jws);
   assert.ok(result);
-  assert.equal(result!.productId, "com.rudder.app.pro.monthly");
+  assert.equal(result!.productId, "com.davidpitchkhadze.rudder.pro.monthly");
 });
 
 test("a bundle ID that doesn't match this app is rejected", () => {
@@ -29,7 +29,7 @@ test("a bundle ID that doesn't match this app is rejected", () => {
 });
 
 test("a product ID outside the Pro set is rejected", () => {
-  const jws = buildJws(validPayload({ productId: "com.rudder.app.something.else" }));
+  const jws = buildJws(validPayload({ productId: "com.davidpitchkhadze.rudder.something.else" }));
   assert.equal(verify(jws), null);
 });
 
@@ -52,7 +52,7 @@ test("a tampered payload (signature no longer matches) is rejected", () => {
   const jws = buildJws(validPayload());
   const [h, p, s] = jws.split(".");
   const forged = JSON.parse(Buffer.from(p!, "base64").toString("utf8"));
-  forged.productId = "com.rudder.app.pro.annual";
+  forged.productId = "com.davidpitchkhadze.rudder.pro.annual";
   const forgedPayload = base64Url(JSON.stringify(forged));
   assert.equal(verify(`${h}.${forgedPayload}.${s}`), null);
 });
