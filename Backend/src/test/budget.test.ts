@@ -27,12 +27,13 @@ test("a trivial decision buys no research and the cheapest effort", () => {
   assert.equal(budget.model, STANDARD_MODEL);
 });
 
-test("a complex decision gets the full pipeline, on the premium model", () => {
+test("a complex decision runs on the premium model, within the same operational budget as medium", () => {
   const budget = budgetFor(
     makeRequest({ complexity: "complex", researchLevel: "deep", maximumResearchCalls: 6, questionCeiling: 5 })
   );
-  assert.equal(budget.effort, "high");
-  assert.equal(budget.maxSearches, 4);
+  assert.equal(budget.effort, "medium");
+  assert.equal(budget.maxSearches, 2);
+  assert.equal(budget.maxTokens, 8000);
   assert.equal(budget.questionsRemaining, 5);
   assert.equal(budget.model, PREMIUM_MODEL);
 });
@@ -60,9 +61,9 @@ test("every budget stays inside its ceiling", () => {
       const budget = budgetFor(
         makeRequest({ complexity, researchLevel, maximumResearchCalls: 8, questionCeiling: 5 })
       );
-      assert.ok(budget.maxSearches <= 4);
+      assert.ok(budget.maxSearches <= 2);
       assert.ok(budget.questionsRemaining <= 5);
-      assert.ok(budget.maxTokens <= 12000);
+      assert.ok(budget.maxTokens <= 8000);
     }
   }
 });

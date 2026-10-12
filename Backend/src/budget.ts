@@ -28,21 +28,21 @@ export interface Budget {
 }
 
 export function budgetFor(request: AnalysisRequest): Budget {
-  const effort: Effort =
-    request.complexity === "complex" ? "high"
-    : request.complexity === "medium" ? "medium"
-    : "low";
-
   // A complex decision runs two sequential premium-model calls (research, then
-  // analysis) -- Vercel's serverless function has a hard 60s ceiling (the max
-  // the Hobby plan allows), and 6 searches plus a 16000-token analysis
-  // reliably blew through it (confirmed live: a 504 FUNCTION_INVOCATION_TIMEOUT
-  // at exactly 60s). Trimmed to fit with margin; if a paid Vercel plan lifts
-  // the ceiling later, these can grow back.
-  const maxTokens = request.complexity === "complex" ? 12000 : 8000;
+  // analysis). Vercel's serverless function has a hard 60s ceiling (the max
+  // the Hobby plan allows) -- confirmed live, twice, that even a trimmed
+  // 4-search/12000-token/high-effort budget still blew through it
+  // (504 FUNCTION_INVOCATION_TIMEOUT at exactly 60s both times). Brought down
+  // to the same operational budget as "medium" -- the premium model is the
+  // only remaining differentiator for Pro, not a larger search/token/effort
+  // budget. If a paid Vercel plan lifts the ceiling later, these can grow
+  // back; see AppStore/RELEASE.md.
+  const effort: Effort = request.complexity === "simple" ? "low" : "medium";
+
+  const maxTokens = 8000;
 
   // Research is capped by the app's budget and by complexity, whichever is lower.
-  const byLevel = request.researchLevel === "deep" ? 4 : request.researchLevel === "light" ? 2 : 0;
+  const byLevel = request.researchLevel === "deep" ? 2 : request.researchLevel === "light" ? 2 : 0;
   const maxSearches = Math.max(0, Math.min(byLevel, request.maximumResearchCalls));
 
   const questionsRemaining = Math.max(
