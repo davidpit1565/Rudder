@@ -361,8 +361,8 @@ public enum AIResponseValidator {
         }
 
         let tradeOffs: [TradeOff] = response.tradeoffs.compactMap { dto in
-            let gaining = dto.gaining.trimmed
-            let givingUp = dto.givingUp.trimmed
+            let gaining = dto.gaining.trimmed.withoutTrailingPeriod
+            let givingUp = dto.givingUp.trimmed.withoutTrailingPeriod
             guard !gaining.isEmpty, !givingUp.isEmpty else { return nil }
             return TradeOff(gaining: gaining.truncated(to: 200), givingUp: givingUp.truncated(to: 200))
         }

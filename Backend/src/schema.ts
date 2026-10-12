@@ -115,7 +115,12 @@ export const DecisionResponseSchema = z.object({
     ).max(3).describe("At most three, in the user's terms, not yours."),
   }).nullable(),
   tradeoffs: z.array(
-    z.object({ gaining: z.string().max(140), givingUp: z.string().max(140) })
+    z.object({
+      gaining: z.string().max(140)
+        .describe("A sentence fragment, lowercase, no trailing period — it's embedded as \"...to get X\"."),
+      givingUp: z.string().max(140)
+        .describe("A sentence fragment, lowercase, no trailing period — it's embedded as \"...giving up X to get...\"."),
+    })
   ).max(3),
   risks: z.array(
     z.object({
