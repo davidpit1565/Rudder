@@ -15,9 +15,18 @@ actually does — anything that changes here has to change in the code first.
 The text of a decision, any answers the user gives, and any preferences they have
 approved storing are sent to RUDDER's own endpoint so the decision can be
 analysed. No account, device identifier or contact information is attached. The
-endpoint forwards the decision text to a third-party AI provider (Anthropic) for
-analysis; disclose that provider in the "third parties" section — Apple requires
-third-party data handling to be declared as if it were the app's own.
+endpoint forwards the decision text to a third-party AI provider (Google, via
+the Gemini API) for analysis; disclose that provider in the "third parties"
+section — Apple requires third-party data handling to be declared as if it
+were the app's own.
+
+**Free-tier nuance, confirm before submitting:** on the Gemini API's free
+tier (no billing account attached), Google's own terms permit it to use
+submitted content to improve its products and have human reviewers read it —
+this does not happen on a paid Gemini plan. Check which plan the production
+`GEMINI_API_KEY` actually runs on (see `Backend/README.md`'s "Cost" section)
+before answering App Store Connect's privacy questionnaire, since it may
+change what's true to declare here and in `Backend/public/privacy.html`.
 
 ## Data NOT collected
 

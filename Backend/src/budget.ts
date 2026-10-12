@@ -3,17 +3,18 @@ import type { AnalysisRequest } from "./schema.js";
 /**
  * What one decision is allowed to spend.
  *
- * Model choice is the primary cost lever, split exactly on the Free/Pro boundary
+ * Model choice is the primary lever, split exactly on the Free/Pro boundary
  * the app already enforces: a complex ("deep") decision is the one that needs
- * Pro or the trial, so it's the only one that runs on the premium model. Simple
- * and medium decisions are free and unlimited for everyone, and run on the
- * cheap/fast model — real analysis, a small fraction of the per-call cost, so
- * the free tier stays genuinely generous without moving the $5/month ceiling.
- * Effort (reasoning depth, tokens, searches) is still the secondary lever
+ * Pro or the trial, so it's the only one that runs on the stronger model.
+ * Simple and medium decisions are free and unlimited for everyone, and run on
+ * the lighter model. Both models are on Gemini's free tier (see
+ * Backend/README.md) -- no per-token credit balance that can silently run
+ * out, only rate limits that fail loud and recover on their own. Effort
+ * (thinking_level, output tokens, searches) is still the secondary lever
  * within whichever model a request gets.
  */
-export const PREMIUM_MODEL = "claude-opus-5";
-export const STANDARD_MODEL = "claude-haiku-5-5";
+export const PREMIUM_MODEL = "gemini-3.8-flash";
+export const STANDARD_MODEL = "gemini-3.5-flash-lite";
 
 export type Effort = "low" | "medium" | "high";
 
@@ -28,15 +29,12 @@ export interface Budget {
 }
 
 export function budgetFor(request: AnalysisRequest): Budget {
-  // A complex decision runs two sequential premium-model calls (research, then
-  // analysis). Vercel's serverless function has a hard 60s ceiling (the max
-  // the Hobby plan allows) -- confirmed live, twice, that even a trimmed
-  // 4-search/12000-token/high-effort budget still blew through it
-  // (504 FUNCTION_INVOCATION_TIMEOUT at exactly 60s both times). Brought down
-  // to the same operational budget as "medium" -- the premium model is the
-  // only remaining differentiator for Pro, not a larger search/token/effort
-  // budget. If a paid Vercel plan lifts the ceiling later, these can grow
-  // back; see AppStore/RELEASE.md.
+  // A complex decision runs two sequential model calls (research, then
+  // analysis) on the stronger model. Kept at the same operational budget as
+  // "medium" -- carried over from when this ran on a per-token-billed
+  // provider and had to stay well clear of Vercel's 60s function-duration
+  // ceiling. Re-measure against Gemini before raising these: the ceiling
+  // itself hasn't moved, only the provider has. See AppStore/RELEASE.md.
   const effort: Effort = request.complexity === "simple" ? "low" : "medium";
 
   const maxTokens = 8000;

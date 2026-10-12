@@ -1,4 +1,4 @@
-import Anthropic, { APIConnectionError, APIError, RateLimitError } from "@anthropic-ai/sdk";
+import type { GoogleGenAI } from "@google/genai";
 import { DecisionResponseSchema, type AnalysisRequest, type WireResponse } from "./schema.js";
 import { budgetFor } from "./budget.js";
 import { SYSTEM_PROMPT, OUTPUT_FORMAT_INSTRUCTIONS, buildUserMessage } from "./prompt.js";
@@ -16,7 +16,7 @@ export class AnalysisError extends Error {
  * The whole pipeline for one decision: research what can be researched, then
  * analyse, then validate before anything is returned.
  */
-export async function analyse(client: Anthropic, request: AnalysisRequest): Promise<WireResponse> {
+export async function analyse(client: GoogleGenAI, request: AnalysisRequest): Promise<WireResponse> {
   const budget = budgetFor(request);
 
   let researchNotes: string | null = null;
@@ -34,48 +34,51 @@ export async function analyse(client: Anthropic, request: AnalysisRequest): Prom
     researchNotes = null;
   }
 
-  let response;
+  let interaction;
   try {
-    response = await client.messages.create({
+    interaction = await client.interactions.create({
       model: budget.model,
-      max_tokens: budget.maxTokens,
-      system: [
-        { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
-        { type: "text", text: OUTPUT_FORMAT_INSTRUCTIONS, cache_control: { type: "ephemeral" } },
-      ],
-      output_config: { effort: budget.effort },
-      messages: [{ role: "user", content: buildUserMessage(request, budget, researchNotes) }],
+      input: buildUserMessage(request, budget, researchNotes),
+      system_instruction: `${SYSTEM_PROMPT}\n\n${OUTPUT_FORMAT_INSTRUCTIONS}`,
+      generation_config: {
+        thinking_level: budget.effort,
+        max_output_tokens: budget.maxTokens,
+      },
+      response_format: { type: "text", mime_type: "application/json" },
     });
   } catch (error) {
     // Server-side only, never sent to the client: just enough to diagnose an
-    // upstream failure (type, HTTP status, Anthropic's own message) without
-    // logging the request, the response, or anything from process.env.
-    if (error instanceof APIError) {
-      console.error("Anthropic API error", { name: error.constructor.name, status: error.status, message: error.message });
-    } else {
-      console.error("analyse() failed before an API response", error instanceof Error ? error.message : error);
-    }
+    // upstream failure (name, HTTP status, the provider's own message)
+    // without logging the request, the response, or anything from
+    // process.env. Duck-typed on `.status` rather than an imported error
+    // class, since that's the one property the SDK's errors are documented
+    // to carry consistently.
+    const status = typeof (error as { status?: unknown })?.status === "number"
+      ? (error as { status: number }).status
+      : undefined;
+    console.error("Gemini API error", {
+      name: error instanceof Error ? error.name : typeof error,
+      status,
+      message: error instanceof Error ? error.message : String(error),
+    });
 
-    if (error instanceof RateLimitError) {
+    if (status === 429) {
       throw new AnalysisError("rate_limited_upstream", 429);
     }
-    if (error instanceof APIConnectionError) {
+    if (status === 503 || status === 504 || status === 408) {
       throw new AnalysisError("upstream_unavailable", 503);
     }
-    if (error instanceof APIError) {
+    if (status !== undefined) {
       throw new AnalysisError("upstream_error", 502);
     }
     throw new AnalysisError("analysis_failed", 502);
   }
 
-  if (response.stop_reason === "refusal") {
+  if (interaction.status === "failed") {
     throw new AnalysisError("refused", 422);
   }
 
-  let text = "";
-  for (const block of response.content) {
-    if (block.type === "text") text += block.text;
-  }
+  const text = interaction.output_text ?? "";
 
   let rawOutput: unknown;
   try {

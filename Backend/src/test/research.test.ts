@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import type Anthropic from "@anthropic-ai/sdk";
+import type { GoogleGenAI } from "@google/genai";
 import { runResearch } from "../research.js";
 import { budgetFor } from "../budget.js";
 import { AnalysisRequestSchema, SCHEMA_VERSION } from "../schema.js";
@@ -20,16 +20,21 @@ function makeRequest(overrides: Record<string, unknown> = {}) {
   });
 }
 
-function searchResultBlock(url: string) {
+function textStepWithCitation(url: string) {
   return {
-    type: "web_search_tool_result" as const,
-    tool_use_id: "x",
-    content: [{ type: "web_search_result" as const, url, title: url }],
+    type: "model_output" as const,
+    content: [
+      {
+        type: "text" as const,
+        text: `The current price is noted here.`,
+        annotations: [{ type: "url_citation" as const, url, title: url, startIndex: 0, endIndex: 1 }],
+      },
+    ],
   };
 }
 
-function fakeClient(create: () => Promise<{ content: unknown[]; stop_reason: string }>): Anthropic {
-  return { messages: { create } } as unknown as Anthropic;
+function fakeClient(create: () => Promise<{ output_text: string; steps: unknown[] }>): GoogleGenAI {
+  return { interactions: { create } } as unknown as GoogleGenAI;
 }
 
 test("no searches budgeted means no call to the model at all", async () => {
@@ -46,49 +51,40 @@ test("no searches budgeted means no call to the model at all", async () => {
   assert.equal(called, false);
 });
 
-test("a normal single-call research turn is unaffected", async () => {
+test("a normal research call reads back the notes and cited sources", async () => {
   const request = makeRequest();
   const budget = budgetFor(request);
   let callCount = 0;
   const client = fakeClient(async () => {
     callCount += 1;
     return {
-      content: [
-        { type: "text", text: "Found the current price." },
-        searchResultBlock("https://example.com/a"),
-      ],
-      stop_reason: "end_turn",
+      output_text: "Found the current price.",
+      steps: [{ type: "google_search_call", arguments: { queries: ["current price"] } }, textStepWithCitation("https://example.com/a")],
     };
   });
 
   const result = await runResearch(client, request, budget);
   assert.equal(callCount, 1);
   assert.equal(result?.notes, "Found the current price.");
+  assert.equal(result?.searchesUsed, 1);
   assert.equal(result?.retrievedUrls.size, 1);
+  assert.equal(result?.retrievedUrls.get("https://example.com/a"), "https://example.com/a");
 });
 
-test("the resume loop stops once the decision's search budget is spent, even if the model would keep going", async () => {
-  // light + maximumResearchCalls: 2 -> budget.maxSearches is exactly 2.
+test("sources from more than one search step are all collected", async () => {
   const request = makeRequest();
   const budget = budgetFor(request);
-  assert.equal(budget.maxSearches, 2);
-
-  let callCount = 0;
-  const client = fakeClient(async () => {
-    callCount += 1;
-    // Always reports one more search and always asks to continue -- exactly
-    // what a model trying to keep resuming past its budget would look like.
-    return {
-      content: [searchResultBlock(`https://example.com/${callCount}`)],
-      stop_reason: "pause_turn",
-    };
-  });
+  const client = fakeClient(async () => ({
+    output_text: "Two facts, two sources.",
+    steps: [
+      { type: "google_search_call", arguments: { queries: ["a"] } },
+      textStepWithCitation("https://example.com/1"),
+      { type: "google_search_call", arguments: { queries: ["b"] } },
+      textStepWithCitation("https://example.com/2"),
+    ],
+  }));
 
   const result = await runResearch(client, request, budget);
-
-  // Without the defensive check, the outer loop's own hard cap (3 attempts)
-  // would still let this run one attempt past the decision's actual budget.
-  assert.equal(callCount, 2, "stops once the budget is spent rather than resuming a third time");
   assert.equal(result?.searchesUsed, 2);
   assert.equal(result?.retrievedUrls.size, 2);
 });

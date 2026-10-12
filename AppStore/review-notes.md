@@ -31,7 +31,7 @@ is on both the paywall and the Profile tab. The first decision is never blocked.
 
 AI AND DATA
 The text of the decision is sent to our own endpoint, which forwards it to
-Anthropic for analysis. No account, device identifier or contact information is
+Google's Gemini API for analysis. No account, device identifier or contact information is
 attached. Decisions, learned preferences and outcomes are stored on the device
 and can be deleted individually or all at once from Profile > Your data.
 

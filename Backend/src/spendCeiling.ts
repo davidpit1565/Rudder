@@ -15,15 +15,19 @@ import { isConfigured, pipeline } from "./redis.js";
  * ceiling (Pro traffic is expected to pay for its own cost) -- but it is
  * still subject to the absolute ceiling below, which has no such exception.
  *
- * The per-complexity costs below are rough estimates, not a bill -- tune
- * them against actual Anthropic usage once real traffic exists (see
- * Backend/README.md's "Cost" section for the token/search budget each
- * complexity spends).
+ * Both models in budget.ts are currently on Gemini's free tier (free of
+ * charge, not a prepaid balance that can run out) -- today's real marginal
+ * cost of every request here is $0. The figures below are deliberately kept
+ * nonzero anyway: what each complexity would cost at Gemini's standard PAID
+ * rate (see Backend/README.md's "Cost" section), so this ceiling stays a
+ * live backstop rather than silently becoming a no-op the moment a model or
+ * tier ever moves off free -- a config mistake or a pricing change should
+ * still get caught here, not discovered as a surprise bill.
  */
 export const ESTIMATED_COST_USD: Record<"simple" | "medium" | "complex", number> = {
-  simple: 0.02,
+  simple: 0.01,
   medium: 0.06,
-  complex: 0.3,
+  complex: 0.08,
 };
 
 // Set to $12, not $30: at bootstrap-stage volume, this ceiling plus fixed

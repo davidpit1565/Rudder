@@ -43,15 +43,14 @@ TONE
 Plain, calm, specific. Short sentences. No exclamation marks, no emoji, no marketing language, no filler. Address the user as "you".`;
 
 /**
- * Confirmed live: Anthropic's grammar-constrained structured output
- * (output_config.format) rejects DecisionResponseSchema outright --
- * "The compiled grammar is too large... simplify your tool schemas or
- * reduce the number of strict tools" -- because the schema has too many
- * nested arrays and objects for strict-mode decoding. This asks for the
- * same shape by instruction instead, in its own cached system block kept
- * separate from SYSTEM_PROMPT (which research.ts also sends, and which
- * must not be told to output JSON). analyze.ts re-validates the result
- * against DecisionResponseSchema regardless, exactly as before.
+ * DecisionResponseSchema has too many nested arrays and objects to trust any
+ * provider's strict schema-constrained decoding not to choke on it or
+ * silently narrow it (this already happened once, on a previous provider).
+ * This asks for the same shape by instruction instead, kept separate from
+ * SYSTEM_PROMPT (which research.ts also sends, and which must not be told to
+ * output JSON). analyze.ts re-validates the result against
+ * DecisionResponseSchema regardless, so correctness never depends on the
+ * model having followed this text.
  */
 export const OUTPUT_FORMAT_INSTRUCTIONS = `Respond with exactly one JSON object and nothing else: no markdown code fence, no text before or after it. The object must validate against this JSON Schema:
 

@@ -47,8 +47,8 @@ server.headersTimeout = 10_000;
 server.keepAliveTimeout = 5_000;
 
 server.listen(port, () => {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.warn("ANTHROPIC_API_KEY is not set — analysis requests will fail.");
+  if (!process.env.GEMINI_API_KEY) {
+    console.warn("GEMINI_API_KEY is not set — analysis requests will fail.");
   }
   if (hasNoClientVerification()) {
     // Not a guess: with neither set, verifyClient() lets every request through,

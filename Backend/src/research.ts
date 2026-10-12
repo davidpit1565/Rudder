@@ -1,4 +1,4 @@
-import type Anthropic from "@anthropic-ai/sdk";
+import type { GoogleGenAI } from "@google/genai";
 import type { AnalysisRequest } from "./schema.js";
 import type { Budget } from "./budget.js";
 import { buildResearchPrompt } from "./prompt.js";
@@ -17,66 +17,50 @@ export interface ResearchResult {
  *
  * Runs only when the decision justifies it. The URLs collected here are the
  * allow-list for the analysis phase, so a fabricated citation cannot survive.
+ *
+ * Unlike the previous provider, Gemini's Google Search tool has no per-call
+ * cap on how many searches it runs -- it decides that itself within one
+ * request/response, so budget.maxSearches is only ever used here to turn
+ * research on or off, and as a number put in front of the model as an
+ * instruction (buildResearchPrompt), not as an enforced ceiling.
  */
 export async function runResearch(
-  client: Anthropic,
+  client: GoogleGenAI,
   request: AnalysisRequest,
   budget: Budget
 ): Promise<ResearchResult | null> {
   if (budget.maxSearches === 0) return null;
 
-  const params = {
+  const interaction = await client.interactions.create({
     model: budget.model,
-    max_tokens: 4000,
-    system: SYSTEM_PROMPT,
-    output_config: { effort: budget.effort },
-    tools: [
-      {
-        type: "web_search_20260209" as const,
-        name: "web_search" as const,
-        max_uses: budget.maxSearches,
-      },
-    ],
-    messages: [{ role: "user" as const, content: buildResearchPrompt(request, budget) }],
-  };
+    input: buildResearchPrompt(request, budget),
+    system_instruction: SYSTEM_PROMPT,
+    generation_config: {
+      thinking_level: budget.effort,
+      max_output_tokens: 4000,
+    },
+    tools: [{ type: "google_search" }],
+  });
 
-  const messages: Anthropic.MessageParam[] = [...params.messages];
   const retrievedUrls = new Map<string, string>();
-  let notes = "";
   let searchesUsed = 0;
 
-  // A server-tool turn can stop with pause_turn; resume it rather than
-  // returning a half-finished brief.
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await client.messages.create({ ...params, messages });
-
-    for (const block of response.content) {
-      if (block.type === "text") {
-        notes += (notes ? "\n" : "") + block.text;
-      } else if (block.type === "web_search_tool_result") {
-        searchesUsed += 1;
-        const content = block.content;
-        // An error comes back as a single object, a success as a list.
-        if (Array.isArray(content)) {
-          for (const result of content) {
-            if (result.type === "web_search_result" && result.url) {
-              retrievedUrls.set(result.url, result.title ?? result.url);
-            }
+  for (const step of interaction.steps ?? []) {
+    if (step.type === "google_search_call") {
+      searchesUsed += 1;
+    } else if (step.type === "model_output") {
+      for (const block of step.content ?? []) {
+        if (block.type !== "text") continue;
+        for (const annotation of block.annotations ?? []) {
+          if (annotation.type === "url_citation" && annotation.url) {
+            retrievedUrls.set(annotation.url, annotation.title ?? annotation.url);
           }
         }
       }
     }
-
-    // Resuming a paused turn is documented to continue it, not start a fresh
-    // one, so the original max_uses should already bound this loop. This
-    // enforces that invariant ourselves rather than trusting it silently: if
-    // it ever didn't hold, resuming again could multiply the searches spent
-    // on a single decision instead of merely finishing the same budget.
-    if (response.stop_reason !== "pause_turn" || searchesUsed >= budget.maxSearches) break;
-    messages.push({ role: "assistant", content: response.content });
   }
 
-  return { notes: notes.trim(), retrievedUrls, searchesUsed };
+  return { notes: (interaction.output_text ?? "").trim(), retrievedUrls, searchesUsed };
 }
 
 /** Renders the brief and its sources for the analysis prompt. */

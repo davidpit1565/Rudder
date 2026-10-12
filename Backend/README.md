@@ -5,7 +5,7 @@ credential, and so the cost of a decision can be controlled somewhere the user
 cannot tamper with.
 
 ```
-iPhone  ->  POST /v1/decisions/analyze  ->  Anthropic API  ->  validated JSON  ->  iPhone
+iPhone  ->  POST /v1/decisions/analyze  ->  Gemini API  ->  validated JSON  ->  iPhone
 ```
 
 ## What it does
@@ -37,9 +37,9 @@ iPhone  ->  POST /v1/decisions/analyze  ->  Anthropic API  ->  validated JSON  -
 ## Running it
 
 ```bash
-cp .env.example .env     # add your ANTHROPIC_API_KEY
+cp .env.example .env     # add your GEMINI_API_KEY
 npm install
-npm test                 # 83 tests, no network, no spend
+npm test                 # 85 tests, no network, no spend
 npm run build && npm start
 ```
 
@@ -57,7 +57,7 @@ Set in the environment, never in code:
 
 | Variable | Purpose |
 |---|---|
-| `ANTHROPIC_API_KEY` | The only credential. Never leaves the server. |
+| `GEMINI_API_KEY` | The only credential. Never leaves the server. Get one from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — both models in `src/budget.ts` are free of charge on the Gemini API's free tier. |
 | `DECIDE_RATE_LIMIT`, `DECIDE_RATE_WINDOW_SECONDS` | Requests per burst window, per client. |
 | `DECIDE_DAILY_LIMIT` | Requests per 24h, per client — bounds sustained abuse the burst window alone does not. |
 | `DECIDE_MAX_CONCURRENT_ANALYSES` | How many analyses may run at once, across every client. |
@@ -122,7 +122,7 @@ platform-as-a-service that terminates HTTPS for you — is enough.
 4. **Health check.** `GET /healthz` — no auth, no rate limit, no model call,
    answers `{"status":"ok"}` immediately. Point the platform's own health
    probe at this path.
-5. **Secrets.** Set `ANTHROPIC_API_KEY` (and `DECIDE_CLIENT_TOKEN`, if used)
+5. **Secrets.** Set `GEMINI_API_KEY` (and `DECIDE_CLIENT_TOKEN`, if used)
    through the platform's secret/environment store — never in a committed
    file. `.env` is git-ignored; only `.env.example`, which holds no real
    value, is tracked.
@@ -194,8 +194,8 @@ Steps specific to this host, beyond the generic list above:
 - **Environment variables** are set in Project Settings → Environment
   Variables, scoped to Production — never in `vercel.json` or any committed
   file. There is no way to set them from outside Vercel's own dashboard or
-  CLI; a deploy that ships without `ANTHROPIC_API_KEY` set will accept
-  requests but fail every analysis call at the Anthropic SDK step.
+  CLI; a deploy that ships without `GEMINI_API_KEY` set will accept
+  requests but fail every analysis call at the Gemini SDK step.
 
 ### Smoke tests after deploying
 
@@ -221,7 +221,7 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST "https://$HOST/v1/decisions/ana
 # fails schema validation, so this also confirms validation runs)
 
 # 5. One real, deliberate, minimal-cost request -- confirms the full path
-#    (Anthropic call, schema validation, citation/budget enforcement) end to
+#    (Gemini call, schema validation, citation/budget enforcement) end to
 #    end. Uses complexity: simple / researchLevel: none to keep it cheap.
 curl -s -X POST "https://$HOST/v1/decisions/analyze" \
   -H "Content-Type: application/json" \
@@ -326,18 +326,23 @@ never the server granting free unmetered access.
 
 ## Cost
 
-Effort is the cost lever, not a cheaper model: one model means one prompt cache
-and one set of API semantics, and low effort on the current model buys more
-quality per unit of spend than a downgrade. The map lives in `src/budget.ts`:
+Model choice is the primary lever, split on the Free/Pro boundary: simple and
+medium decisions run on the lighter model, a complex decision is the one that
+needs the stronger one. Effort (`thinking_level`) and the token/search budget
+are the secondary lever within whichever model a request gets. The map lives
+in `src/budget.ts`:
 
-| Complexity | Effort | Searches | Max tokens |
-|---|---|---|---|
-| simple | low | 0 | 8,000 |
-| medium | medium | up to 2 | 8,000 |
-| complex | high | up to 6 | 16,000 |
+| Complexity | Model | Effort | Searches | Max tokens |
+|---|---|---|---|---|
+| simple | gemini-3.5-flash-lite | low | 0 | 8,000 |
+| medium | gemini-3.5-flash-lite | medium | up to 2 | 8,000 |
+| complex | gemini-3.8-flash | medium | up to 2 | 8,000 |
 
-The system prompt is cached, so the per-request cost is dominated by the decision
-itself rather than by the instructions.
+Both models are on Gemini's free tier today (see `.env.example`) -- no
+per-token credit balance to run out, only rate limits that return a 429 and
+recover on their own. `src/spendCeiling.ts` still tracks a nonzero estimated
+cost per complexity regardless, so the monthly spend ceilings stay a live
+backstop rather than a no-op if a model or tier ever moves to paid.
 
 ## The contract
 
