@@ -100,7 +100,12 @@ async function checkRedis(
       ["EXPIRE", key, 40 * 24 * 60 * 60, "NX"],
     ]);
     const used = Number(count);
-    return { allowed: used <= limit, used, limit, retryAfterSeconds: secondsRemaining };
+    // max(limit, 1): the very first spend is always allowed even when limit is
+    // 0, mirroring the app's own unconditional "first decision ever is free"
+    // rule (FeatureAccess.allowsDeepDecision's completedDecisionCount == 0
+    // check) -- without this, a limit of 0 would reject that first decision
+    // server-side even though the app just told the user it was free.
+    return { allowed: used <= Math.max(limit, 1), used, limit, retryAfterSeconds: secondsRemaining };
   } catch {
     // Fails closed, same reasoning as rateLimit.ts: a quota that can't be
     // reached must not become an unlimited one.
@@ -112,10 +117,15 @@ function checkLocal(installId: string, monthKey: string, limit: number, secondsR
   const existing = localCounters.get(installId);
   if (!existing || existing.monthKey !== monthKey) {
     localCounters.set(installId, { count: 1, monthKey });
-    return { allowed: 1 <= limit, used: 1, limit, retryAfterSeconds: secondsRemaining };
+    return { allowed: 1 <= Math.max(limit, 1), used: 1, limit, retryAfterSeconds: secondsRemaining };
   }
   existing.count += 1;
-  return { allowed: existing.count <= limit, used: existing.count, limit, retryAfterSeconds: secondsRemaining };
+  return {
+    allowed: existing.count <= Math.max(limit, 1),
+    used: existing.count,
+    limit,
+    retryAfterSeconds: secondsRemaining,
+  };
 }
 
 export function resetDeepDecisionQuota(): void {
