@@ -33,10 +33,16 @@ export function budgetFor(request: AnalysisRequest): Budget {
     : request.complexity === "medium" ? "medium"
     : "low";
 
-  const maxTokens = request.complexity === "complex" ? 16000 : 8000;
+  // A complex decision runs two sequential premium-model calls (research, then
+  // analysis) -- Vercel's serverless function has a hard 60s ceiling (the max
+  // the Hobby plan allows), and 6 searches plus a 16000-token analysis
+  // reliably blew through it (confirmed live: a 504 FUNCTION_INVOCATION_TIMEOUT
+  // at exactly 60s). Trimmed to fit with margin; if a paid Vercel plan lifts
+  // the ceiling later, these can grow back.
+  const maxTokens = request.complexity === "complex" ? 12000 : 8000;
 
   // Research is capped by the app's budget and by complexity, whichever is lower.
-  const byLevel = request.researchLevel === "deep" ? 6 : request.researchLevel === "light" ? 2 : 0;
+  const byLevel = request.researchLevel === "deep" ? 4 : request.researchLevel === "light" ? 2 : 0;
   const maxSearches = Math.max(0, Math.min(byLevel, request.maximumResearchCalls));
 
   const questionsRemaining = Math.max(

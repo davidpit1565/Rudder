@@ -15,13 +15,20 @@ line of code.
 - **Backend deployment** — live at `decide-mu-navy.vercel.app`, verified
   working end-to-end against a real request (not just `/healthz`).
 - **Privacy policy, terms and support pages** — published and wired up in
-  `Config/Release.xcconfig`. One placeholder remains: the contact address in
-  all three pages is still `support@rudder.app`, not a real monitored inbox.
-- **The two production bugs found while verifying the above** — the
-  serverless function had no `maxDuration`, so any real decision could be
-  killed mid-request before finishing; and the free-tier quota rejected even
-  the first (meant to be unconditionally free) deep decision at the shipped
-  limit of 0. Both fixed and confirmed live.
+  `Config/Release.xcconfig`, contact address set to `davidpit2008@gmail.com`
+  (a real inbox, used as a stopgap — swap it for something more permanent
+  whenever that exists).
+- **Three production bugs found while verifying all of the above end to
+  end** — the serverless function had no `maxDuration`, so a real decision
+  could be killed mid-request; the free-tier quota rejected even the first
+  (meant to be unconditionally free) deep decision at the shipped limit of 0;
+  and a "complex" decision's two sequential premium-model calls (research,
+  then analysis) could still blow past the 60s ceiling at the original
+  6-search/16000-token budget — trimmed to 4 searches/12000 tokens with
+  margin. All three fixed and confirmed live. A real content bug was also
+  found and fixed: the trade-off sentence ("You're giving up X to get Y.")
+  could read "...X. to get Y.." when the model's own `gaining`/`givingUp`
+  text already carried a trailing period.
 
 ## Needs you
 
@@ -29,28 +36,23 @@ line of code.
    `AppStore/subscriptions.md` with exactly those identifiers, in one group,
    with the 7-day free trial and prices set per territory. (In progress.)
 
-2. **A real support email** — replace `support@rudder.app` in
-   `Backend/public/privacy.html`, `terms.html` and `support.html` with an
-   address you actually control and will check. Tell me the address and I'll
-   make the edit — I can't invent one for you.
-
-3. **Keep the listing's numbers honest**
+2. **Keep the listing's numbers honest**
    `FeatureAccess.freeDeepDecisionsPerMonth` and `FeatureAccess.freeHistoryLimit`
    in `App/App/AppEnvironment.swift` are the single source of truth, and every
    in-app string interpolates them. The App Store description in
    `AppStore/metadata.md` spells them out in words, so if either constant ever
    changes, change that sentence too.
 
-4. **App Store listing** — `AppStore/metadata.md` has the name, subtitle,
+3. **App Store listing** — `AppStore/metadata.md` has the name, subtitle,
    description, keywords and category (name needs picking fresh — "Rudder"
    alone is already taken). `AppStore/screenshots.md` has the seven shots and
    what must be in each; `AppStore/review-notes.md` is the reviewer note.
 
-5. **App Privacy answers** — `AppStore/privacy.md` has the exact answers,
+4. **App Privacy answers** — `AppStore/privacy.md` has the exact answers,
    including the third-party AI provider declaration; they just need typing
    into App Store Connect's own questionnaire.
 
-6. **App Attest (deliberately deferred, not a launch blocker)**
+5. **App Attest (deliberately deferred, not a launch blocker)**
    The endpoint is currently protected by a burst rate limit, a daily limit
    and a global concurrency cap — none of which establish identity, only
    bound the damage. The $5/month absolute spend ceiling already bounds the

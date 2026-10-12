@@ -12,6 +12,14 @@ extension String {
 
     /// True when the string carries no visible content.
     var isBlank: Bool { trimmed.isEmpty }
+
+    /// Strips one trailing period, for text meant to be embedded mid-sentence
+    /// (e.g. "...giving up X to get Y.") rather than shown standalone — a
+    /// model reply can still send a complete sentence despite being asked for
+    /// a fragment, and this keeps that from reading as "X. to get Y.".
+    var withoutTrailingPeriod: String {
+        hasSuffix(".") ? String(dropLast()) : self
+    }
 }
 
 extension Optional where Wrapped == String {

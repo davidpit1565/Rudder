@@ -32,7 +32,7 @@ test("a complex decision gets the full pipeline, on the premium model", () => {
     makeRequest({ complexity: "complex", researchLevel: "deep", maximumResearchCalls: 6, questionCeiling: 5 })
   );
   assert.equal(budget.effort, "high");
-  assert.equal(budget.maxSearches, 6);
+  assert.equal(budget.maxSearches, 4);
   assert.equal(budget.questionsRemaining, 5);
   assert.equal(budget.model, PREMIUM_MODEL);
 });
@@ -60,9 +60,9 @@ test("every budget stays inside its ceiling", () => {
       const budget = budgetFor(
         makeRequest({ complexity, researchLevel, maximumResearchCalls: 8, questionCeiling: 5 })
       );
-      assert.ok(budget.maxSearches <= 6);
+      assert.ok(budget.maxSearches <= 4);
       assert.ok(budget.questionsRemaining <= 5);
-      assert.ok(budget.maxTokens <= 16000);
+      assert.ok(budget.maxTokens <= 12000);
     }
   }
 });
