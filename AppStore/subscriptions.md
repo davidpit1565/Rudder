@@ -39,8 +39,9 @@ a trap, and a lifetime plan on a product with a per-decision serving cost is one
 ## Metadata per product
 
 - **Display name:** Monthly / Annual
-- **Description:** "Unlimited deep decisions, Decision Memory, outcome learning
-  and your full history."
+- **Description:** "Deep decisions, Decision Memory and full history." (49
+  characters — App Store Connect's subscription description field caps out at
+  55; the earlier, more spelled-out wording was 82 and gets rejected inline.)
 - **Review screenshot:** the paywall, showing both plans and Restore Purchases.
 
 ## Introductory offers
