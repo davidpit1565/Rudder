@@ -41,6 +41,7 @@ struct ProfileView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: RudderSpacing.xl) {
                     subscriptionSection
+                    usageSection
                     memorySection
                     dataSection
                     aboutSection
@@ -50,6 +51,7 @@ struct ProfileView: View {
             }
             .background(RudderColor.background)
             .navigationTitle("Profile")
+            .task { await environment.refreshQuotaStatus() }
             .sheet(item: $paywallContext) { context in
                 PaywallView(context: context)
             }
@@ -136,6 +138,57 @@ struct ProfileView: View {
                         .frame(minHeight: RudderSpacing.minimumTouchTarget)
                     }
                 }
+            }
+        }
+    }
+
+    /// Live usage against every quota the backend actually enforces
+    /// (`AppEnvironment.refreshQuotaStatus()`) -- omitted entirely rather than
+    /// showing a stale or fabricated number when that fetch hasn't succeeded
+    /// yet. "Simple" never appears here: it is never limited, at any tier.
+    private var usageSection: some View {
+        Group {
+            if let status = environment.quotaStatus {
+                VStack(alignment: .leading, spacing: RudderSpacing.s) {
+                    SectionHeader(title: "Today's decisions")
+                    RudderCard {
+                        VStack(alignment: .leading, spacing: RudderSpacing.m) {
+                            usageRow(label: "Medium", bucket: status.medium)
+                            if let monthly = status.complex.monthly {
+                                // A Free install: this is the monthly quota that makes a
+                                // recurring Free complex decision not exist (see
+                                // Backend/src/quota.ts) -- not a daily allowance.
+                                usageRow(label: "Complex this month", bucket: monthly)
+                                if !status.isPro {
+                                    SecondaryButton(title: "See Pro") { paywallContext = .deepDecisionLimit }
+                                }
+                            } else if let daily = status.complex.daily {
+                                // A verified Pro subscriber: a generous daily backstop,
+                                // not a real constraint on normal use.
+                                usageRow(label: "Complex today", bucket: daily)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func usageRow(label: String, bucket: QuotaBucketStatus) -> some View {
+        VStack(alignment: .leading, spacing: RudderSpacing.xs) {
+            HStack {
+                Text(label)
+                    .font(RudderFont.callout)
+                    .foregroundStyle(RudderColor.primaryText)
+                Spacer()
+                Text("\(bucket.used) of \(bucket.limit) used")
+                    .font(RudderFont.callout.weight(.medium))
+                    .foregroundStyle(RudderColor.secondaryText)
+            }
+            if let resetsAt = ISO8601DateFormatter().date(from: bucket.resetsAt) {
+                Text("Resets \(resetsAt.formatted(.dateTime.month(.abbreviated).day().hour().minute()))")
+                    .font(RudderFont.footnote)
+                    .foregroundStyle(RudderColor.secondaryText)
             }
         }
     }

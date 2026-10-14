@@ -50,22 +50,40 @@ export function validPayload(overrides: Record<string, unknown> = {}) {
 
 /** Runs `fn` with DECIDE_APPLE_ROOT_FINGERPRINT pointed at this fixture's own
  * synthetic root, standing in for the real pinned Apple root, and restores
- * whatever was there before as soon as `fn` returns.
+ * whatever was there before once `fn` is actually done -- including, now,
+ * when `fn` returns a Promise (e.g. `() => handle(request)`).
  *
- * Deliberately synchronous, even though callers may pass something that
- * itself returns a Promise (e.g. `() => handle(request)`): the code that
- * actually reads this env var (verifyAppStoreTransaction, called from
- * handler.ts) runs synchronously before that returned promise's first
- * `await`, so the env var only needs to be in place for the synchronous call
- * to `fn()` itself, not for however long the promise it returns takes to
- * settle. */
+ * This used to restore the env var synchronously right after `fn()` returned,
+ * on the assumption that whatever reads it (verifyAppStoreTransaction, called
+ * from handler.ts) always runs before that returned promise's first `await`.
+ * Confirmed false by a real test failure: handle() reads this env var after
+ * TWO awaits (the rate-limit checks), so the synchronous restore reverted it
+ * before verification ever ran -- every existing Pro-flavored test happened
+ * to pass anyway, because none of them asserted on a behavior that actually
+ * differs when verification silently fails closed, until a daily-quota test
+ * needed the real "Pro" bucket name specifically. Detecting a Promise result
+ * and restoring only after it settles fixes this for async callers while
+ * leaving every synchronous caller (e.g. appStoreVerify.test.ts, which calls
+ * verifyAppStoreTransaction directly) byte-for-byte unchanged. */
 export function withTestAppleRoot<T>(fn: () => T): T {
   const previous = process.env.DECIDE_APPLE_ROOT_FINGERPRINT;
   process.env.DECIDE_APPLE_ROOT_FINGERPRINT = ROOT_FINGERPRINT;
-  try {
-    return fn();
-  } finally {
+  const restore = () => {
     if (previous === undefined) delete process.env.DECIDE_APPLE_ROOT_FINGERPRINT;
     else process.env.DECIDE_APPLE_ROOT_FINGERPRINT = previous;
+  };
+
+  let result: T;
+  try {
+    result = fn();
+  } catch (error) {
+    restore();
+    throw error;
   }
+
+  if (result instanceof Promise) {
+    return result.finally(restore) as unknown as T;
+  }
+  restore();
+  return result;
 }

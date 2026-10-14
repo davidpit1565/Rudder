@@ -53,6 +53,13 @@ final class AppEnvironment {
     /// A preference RUDDER would like to remember, waiting on the user's answer.
     private(set) var pendingMemoryCandidate: MemoryCandidate?
     private(set) var storageError: String?
+    /// Today's/this-month's usage across every quota the backend actually
+    /// enforces (Backend/src/quota.ts), fetched read-only -- never computed
+    /// from local decisions, which can't see another device's spend or
+    /// survive a reinstall. `nil` until the first successful fetch, or again
+    /// whenever a fetch fails; the Profile screen simply omits the section
+    /// rather than showing a stale or fabricated number.
+    private(set) var quotaStatus: QuotaStatus?
 
     init(
         configuration: AppConfiguration = .shared,
@@ -261,5 +268,24 @@ final class AppEnvironment {
             installId: InstallIdentity.current,
             proTransactionProvider: { [subscriptions] in await subscriptions.currentTransactionJWS() }
         )
+    }
+
+    // MARK: - Quota status
+
+    private func quotaStatusService() -> QuotaStatusService {
+        RemoteQuotaStatusService(
+            configuration: configuration,
+            installId: InstallIdentity.current,
+            proTransactionProvider: { [subscriptions] in await subscriptions.currentTransactionJWS() }
+        )
+    }
+
+    /// Best-effort, silent on failure: this is a read-only convenience for the
+    /// Profile screen, never on the critical path for starting or completing
+    /// a decision, so a failed fetch just means that screen doesn't show live
+    /// numbers this time -- never a reason to surface an error.
+    func refreshQuotaStatus() async {
+        guard configuration.isBackendConfigured else { return }
+        quotaStatus = try? await quotaStatusService().fetchStatus()
     }
 }
