@@ -13,6 +13,7 @@ final class SpeechRecognizer {
         case notAuthorized
         case notAvailable
         case couldNotStart
+        case recognitionFailed
 
         var errorDescription: String? {
             switch self {
@@ -22,6 +23,8 @@ final class SpeechRecognizer {
                 return "Speech recognition isn't available on this device right now."
             case .couldNotStart:
                 return "Couldn't start listening. Try again."
+            case .recognitionFailed:
+                return "I didn't catch that. Try again."
             }
         }
     }
@@ -124,6 +127,9 @@ final class SpeechRecognizer {
                 guard let self else { return }
                 if let transcript {
                     onTranscript(transcript)
+                }
+                if failed {
+                    self.errorMessage = Failure.recognitionFailed.localizedDescription
                 }
                 if failed || isFinal {
                     self.stop()

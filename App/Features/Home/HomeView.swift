@@ -69,6 +69,13 @@ struct HomeView: View {
         .fullScreenCover(item: $activeDecision) { active in
             DecisionFlowView(prompt: active.prompt)
         }
+        .onChange(of: activeDecision) { oldValue, newValue in
+            // Returning from a finished decision should start the next one with
+            // a clean slate, not whatever was typed for the last one.
+            if oldValue != nil && newValue == nil {
+                prompt = ""
+            }
+        }
         .sheet(isPresented: $showingPaywall) {
             PaywallView(context: .deepDecisionLimit)
         }
