@@ -29,9 +29,12 @@ export interface ResearchResult {
  * for the analysis call that follows -- research is best-effort there (any
  * failure, this timeout included, is caught and treated as "no research
  * found", never as a failed decision), so it gets the smaller share on
- * purpose, not the leftover.
+ * purpose, not the leftover. Trimmed from 20s: confirmed live that a
+ * "complex" decision with deep research and "high" effort (see budget.ts)
+ * needs more of the shared budget than 20s left it -- two real requests in a
+ * row ran past the whole pipeline deadline and were cut off by it.
  */
-const RESEARCH_TIMEOUT_MS = 20_000;
+const RESEARCH_TIMEOUT_MS = 15_000;
 
 export async function runResearch(
   client: GoogleGenAI,

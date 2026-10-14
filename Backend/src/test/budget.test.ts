@@ -24,13 +24,17 @@ test("a trivial decision buys no research and the cheapest effort", () => {
   );
   assert.equal(budget.maxSearches, 0);
   assert.equal(budget.effort, "low");
-  assert.equal(budget.model, STANDARD_MODEL);
+  assert.equal(budget.provider, "groq");
+  assert.equal(budget.model, GROQ_MODEL);
 });
 
 test("a complex decision gets the full research/token budget, analysed on Groq", () => {
   // PREMIUM_MODEL is unused for now -- confirmed live, three times, that it
   // doesn't complete within Vercel's 60s ceiling even at the lowest effort
   // and zero research. See the comment on PREMIUM_MODEL/GROQ_MODEL in budget.ts.
+  // Effort is "medium", not "high": confirmed live that "high" effort with
+  // ANY research reliably overran the pipeline deadline -- see the comment
+  // on `effort` in budget.ts.
   const budget = budgetFor(
     makeRequest({ complexity: "complex", researchLevel: "deep", maximumResearchCalls: 6, questionCeiling: 5 })
   );
@@ -44,15 +48,16 @@ test("a complex decision gets the full research/token budget, analysed on Groq",
   assert.equal(budget.researchModel, STANDARD_MODEL);
 });
 
-test("simple and medium decisions are both analysed on Gemini's standard model; only complex moves to Groq", () => {
-  for (const complexity of ["simple", "medium"] as const) {
+test("every complexity is analysed on Groq; medium and complex currently share the same effort", () => {
+  const efforts: Record<string, string> = { simple: "low", medium: "medium", complex: "medium" };
+  for (const complexity of ["simple", "medium", "complex"] as const) {
     const budget = budgetFor(makeRequest({ complexity }));
-    assert.equal(budget.provider, "gemini");
-    assert.equal(budget.model, STANDARD_MODEL);
+    assert.equal(budget.provider, "groq");
+    assert.equal(budget.model, GROQ_MODEL);
+    assert.equal(budget.effort, efforts[complexity]);
+    // Research is unaffected by which provider analyses -- always Gemini.
+    assert.equal(budget.researchModel, STANDARD_MODEL);
   }
-  const complexBudget = budgetFor(makeRequest({ complexity: "complex" }));
-  assert.equal(complexBudget.provider, "groq");
-  assert.equal(complexBudget.model, GROQ_MODEL);
 });
 
 test("the app's cap wins when it is lower than the level's", () => {
