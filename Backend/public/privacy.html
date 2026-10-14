@@ -18,16 +18,17 @@
 </head>
 <body>
 <h1>Privacy Policy</h1>
-<p class="updated">Last updated: 18 September 2026</p>
+<p class="updated">Last updated: 14 October 2026</p>
 
 <p>Rudder ("the app") is a decision-assistance app. This policy describes exactly what leaves your device, why, and what stays on it.</p>
 
 <h2>What is sent, and why</h2>
-<p>When you ask Rudder to analyse a decision, the text of that decision, any answers you give to its follow-up questions, and any preferences you've previously approved storing are sent to Rudder's own backend service, which forwards them to a third-party AI provider, <strong>Google</strong> (the Gemini API), to produce the analysis. This is the only reason any of this content leaves your device — Rudder cannot answer without it.</p>
+<p>When you ask Rudder to analyse a decision, the text of that decision, any answers you give to its follow-up questions, and any preferences you've previously approved storing are sent to Rudder's own backend service. The backend sends this content to two third-party AI providers: <strong>Groq</strong>, which performs the core analysis and produces the recommendation, and <strong>Google</strong> (the Gemini API), which looks up information relevant to your decision when research is needed. This is the only reason any of this content leaves your device — Rudder cannot answer without it.</p>
 <p>No account is required to use Rudder, and none of this content is linked to your identity: no name, email, phone number, physical address, or device identifier is attached to it.</p>
 
-<h2>Third-party processing (Google / Gemini API)</h2>
-<p>Google processes the decision content you send to generate the analysis returned to you. <strong>On the Gemini API's free tier, Google's own terms permit it to use submitted content to improve its products and train its models, and to have human reviewers read API input and output</strong> — unlike a paid API plan, where Google states it does not use prompts for product improvement. See <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">ai.google.dev/gemini-api/terms</a> and <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a> for Google's current terms, and confirm which plan is in effect before relying on this statement, since a provider's policy — and which plan this app runs on — can change independently of this page.</p>
+<h2>Third-party processing (Groq and Google / Gemini API)</h2>
+<p><strong>Groq</strong> processes the decision text to produce the analysis and recommendation returned to you. By default, Groq does not use API inputs or outputs to train its models, and does not retain them beyond what its infrastructure needs to serve the request. See <a href="https://console.groq.com/docs/your-data" target="_blank" rel="noopener">console.groq.com/docs/your-data</a> for Groq's current data handling terms.</p>
+<p><strong>Google</strong> (the Gemini API) receives queries derived from your decision when Rudder looks up information to support its analysis. <strong>On the Gemini API's free tier — which Rudder currently uses for this — Google's own terms permit it to use submitted content to improve its products and train its models, and to have human reviewers read API input and output</strong>, unlike a paid plan, where Google states it does not use prompts for product improvement. See <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">ai.google.dev/gemini-api/terms</a> and <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a> for Google's current terms. This page will be updated if either provider's role or plan changes.</p>
 
 <h2>What stays on your device</h2>
 <p>Your decisions, any preferences Rudder has learned and you've approved ("Decision Memory"), and any outcomes you record are stored locally on your device using Apple's SwiftData framework. Rudder's backend does not keep a copy of your decision text after returning the analysis — it processes each request and discards it.</p>

@@ -70,25 +70,26 @@ line of code.
    implementing this properly later; see the "Known gap" section in
    `Backend/README.md`.
 
-6. **Set `GEMINI_API_KEY` in Vercel and pick a tier** — the old
-   `ANTHROPIC_API_KEY` is gone from the code; production needs a real
-   `GEMINI_API_KEY` (Project Settings → Environment Variables) before any
-   decision will work. Get one at
-   [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
-   Two real choices, not just a formality:
+6. **Set `GEMINI_API_KEY` and `GROQ_API_KEY` in Vercel, and pick a Gemini tier**
+   — the old `ANTHROPIC_API_KEY` is gone from the code. Production needs both
+   keys set (Project Settings → Environment Variables) before any decision
+   will work: `GROQ_API_KEY` now does the core analysis for every complexity
+   (get one at [console.groq.com](https://console.groq.com)), and
+   `GEMINI_API_KEY` does the research/lookup call only (get one at
+   [aistudio.google.com/apikey](https://aistudio.google.com/apikey)).
+   The Gemini tier choice is still a real one, just narrower in scope than
+   before (research queries, not the full decision text):
    - **Free tier** (no billing account attached) — genuinely $0, but
-     Google's own terms permit it to use the decision text you send to
-     improve its products, with human reviewers able to read it.
-     `Backend/public/privacy.html` and `AppStore/privacy.md` are already
-     written to disclose this honestly for this tier.
+     Google's own terms permit it to use what's sent to improve its products,
+     with human reviewers able to read it. `Backend/public/privacy.html` and
+     `AppStore/privacy.md` are already written to disclose this honestly for
+     this tier. This is what production runs on today.
    - **Paid tier** (a Cloud Billing account with a card attached, no plan
-     change needed otherwise) — real pay-as-you-go, a few cents per 1,000
-     decisions at these models' prices, and Google does not use the content
-     to improve its products. If you switch, update both privacy documents
-     to drop the free-tier training disclosure before submitting.
-   Given Rudder analyses people's personal decisions, the paid tier is the
-   safer default the moment it's convenient to set up — but the free tier is
-   enough to get the app working and tested right now.
+     change needed otherwise) — real pay-as-you-go, and Google does not use
+     the content to improve its products. If you switch, update both privacy
+     documents to drop the free-tier training disclosure before submitting.
+   Groq's own default (see `console.groq.com/docs/your-data`) is no training
+   and no retention beyond serving the request, regardless of tier.
 
 ## Before you archive
 

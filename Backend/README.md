@@ -57,7 +57,8 @@ Set in the environment, never in code:
 
 | Variable | Purpose |
 |---|---|
-| `GEMINI_API_KEY` | The only credential. Never leaves the server. Get one from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — both models in `src/budget.ts` are free of charge on the Gemini API's free tier. |
+| `GEMINI_API_KEY` | Never leaves the server. Get one from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — the research model in `src/budget.ts` is free of charge on the Gemini API's free tier. |
+| `GROQ_API_KEY` | Never leaves the server. Required — every decision's analysis step runs on Groq now (see `src/budget.ts`); without this set, analysis fails for every complexity, not just "complex". Get one from [console.groq.com](https://console.groq.com). |
 | `DECIDE_RATE_LIMIT`, `DECIDE_RATE_WINDOW_SECONDS` | Requests per burst window, per client. |
 | `DECIDE_DAILY_LIMIT` | Requests per 24h, per client — bounds sustained abuse the burst window alone does not. |
 | `DECIDE_MAX_CONCURRENT_ANALYSES` | How many analyses may run at once, across every client. |
@@ -351,25 +352,28 @@ never the server granting free unmetered access.
 Effort (`thinking_level`) and the token/search budget are the lever between
 complexities; the map lives in `src/budget.ts`:
 
-| Complexity | Model | Effort | Searches | Max tokens |
-|---|---|---|---|---|
-| simple | gemini-3.5-flash-lite | low | 0 | 16,000 |
-| medium | gemini-3.5-flash-lite | medium | up to 2 | 16,000 |
-| complex | gemini-3.5-flash-lite | medium | up to 2 | 16,000 |
+| Complexity | Analysis provider / model | Research model | Effort | Searches | Max tokens |
+|---|---|---|---|---|---|
+| simple | Groq / openai/gpt-oss-120b | gemini-3.5-flash-lite | low | 0 | 16,000 |
+| medium | Groq / openai/gpt-oss-120b | gemini-3.5-flash-lite | medium | up to 2 | 16,000 |
+| complex | Groq / openai/gpt-oss-120b | gemini-3.5-flash-lite | medium | up to 2 | 16,000 |
 
-Every complexity runs on the same model for now. `PREMIUM_MODEL`
+Every complexity's analysis step runs on Groq now, not Gemini -- confirmed
+live that Gemini's free tier was both too slow and unreliable for analysis
+(see the comment on `GROQ_MODEL` in `src/budget.ts`). Gemini is still used
+for every research call, on every complexity, since its `google_search` tool
+returns the clean, structured citations `validate.ts` depends on. `PREMIUM_MODEL`
 (`gemini-3.8-flash`) exists in budget.ts but is unused by design, not
 forgotten: confirmed live, three times, that a single call on it -- at the
 lowest effort, with zero research -- still didn't complete within Vercel's
-60s function-duration ceiling. Bring it back for "complex" once that ceiling
-is raised (a paid Vercel plan lifts it to 300s) or the model proves reliably
-faster. The Free/Pro boundary is unaffected either way -- a "complex"
-decision is still the one gated behind Pro or the trial (`src/quota.ts`), it
-just isn't backed by a stronger model at the moment.
+60s function-duration ceiling. The Free/Pro boundary is unaffected either
+way -- a "complex" decision is still the one gated behind Pro or the trial
+(`src/quota.ts`).
 
-Both models are on Gemini's free tier today (see `.env.example`) -- no
-per-token credit balance to run out, only rate limits that return a 429 and
-recover on their own. `src/spendCeiling.ts` still tracks a nonzero estimated
+The Gemini research model is on Gemini's free tier today (see
+`.env.example`) -- no per-token credit balance to run out, only rate limits
+that return a 429 and recover on their own. Groq is billed separately; see
+`GROQ_API_KEY` above. `src/spendCeiling.ts` still tracks a nonzero estimated
 cost per complexity regardless, so the monthly spend ceilings stay a live
 backstop rather than a no-op if a model or tier ever moves to paid.
 
