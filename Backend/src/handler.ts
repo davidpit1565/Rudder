@@ -64,9 +64,10 @@ function getClients(): AnalysisClients {
         httpOptions: { retryOptions: { attempts: 1 } },
       }),
       // Groq's API is OpenAI-compatible, so the official `openai` SDK talks
-      // to it directly -- no separate Groq SDK. Used only for "complex"
-      // (see budget.ts). Same fail-fast reasoning as Gemini above: the
-      // OpenAI SDK also retries by default, so pin it to 0 extra retries.
+      // to it directly -- no separate Groq SDK. Used for every decision's
+      // analysis step now, every complexity (see budget.ts). Same fail-fast
+      // reasoning as Gemini above: the OpenAI SDK also retries by default,
+      // so pin it to 0 extra retries.
       //
       // Unlike GoogleGenAI, the OpenAI SDK throws at CONSTRUCTION time if no
       // key resolves (here or via OPENAI_API_KEY) -- confirmed live: with

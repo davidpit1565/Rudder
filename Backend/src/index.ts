@@ -48,10 +48,10 @@ server.keepAliveTimeout = 5_000;
 
 server.listen(port, () => {
   if (!process.env.GEMINI_API_KEY) {
-    console.warn("GEMINI_API_KEY is not set — analysis requests will fail.");
+    console.warn("GEMINI_API_KEY is not set — research will silently find nothing.");
   }
   if (!process.env.GROQ_API_KEY) {
-    console.warn("GROQ_API_KEY is not set — \"complex\" decisions will fail.");
+    console.warn("GROQ_API_KEY is not set — every decision's analysis step will fail.");
   }
   if (hasNoClientVerification()) {
     // Not a guess: with neither set, verifyClient() lets every request through,

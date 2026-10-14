@@ -162,8 +162,9 @@ async function analyseWithGemini(
 /**
  * Groq's chat completions endpoint is OpenAI-compatible (base URL
  * https://api.groq.com/openai/v1), so the official `openai` SDK talks to it
- * directly -- no Groq-specific SDK needed. Used only for "complex" (see
- * budget.ts): research still runs on Gemini regardless of this provider.
+ * directly -- no Groq-specific SDK needed. Used for every decision's
+ * analysis step now, every complexity (see budget.ts): research still runs
+ * on Gemini regardless of this provider.
  */
 async function analyseWithGroq(
   client: OpenAI,
