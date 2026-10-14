@@ -24,6 +24,15 @@ export interface ResearchResult {
  * research on or off, and as a number put in front of the model as an
  * instruction (buildResearchPrompt), not as an enforced ceiling.
  */
+/**
+ * Leaves the bulk of analyse()'s shared PIPELINE_DEADLINE_MS (see analyze.ts)
+ * for the analysis call that follows -- research is best-effort there (any
+ * failure, this timeout included, is caught and treated as "no research
+ * found", never as a failed decision), so it gets the smaller share on
+ * purpose, not the leftover.
+ */
+const RESEARCH_TIMEOUT_MS = 20_000;
+
 export async function runResearch(
   client: GoogleGenAI,
   request: AnalysisRequest,
@@ -31,19 +40,22 @@ export async function runResearch(
 ): Promise<ResearchResult | null> {
   if (budget.maxSearches === 0) return null;
 
-  const interaction = await client.interactions.create({
-    model: budget.model,
-    input: buildResearchPrompt(request, budget),
-    system_instruction: SYSTEM_PROMPT,
-    generation_config: {
-      thinking_level: budget.effort,
-      // Doubled from the first cut at this: max_output_tokens is a hard cap
-      // that includes thinking tokens on Gemini, so a tight budget here risks
-      // starving the actual research notes, not just capping their length.
-      max_output_tokens: 8000,
+  const interaction = await client.interactions.create(
+    {
+      model: budget.researchModel,
+      input: buildResearchPrompt(request, budget),
+      system_instruction: SYSTEM_PROMPT,
+      generation_config: {
+        thinking_level: budget.effort,
+        // Doubled from the first cut at this: max_output_tokens is a hard cap
+        // that includes thinking tokens on Gemini, so a tight budget here risks
+        // starving the actual research notes, not just capping their length.
+        max_output_tokens: 8000,
+      },
+      tools: [{ type: "google_search" }],
     },
-    tools: [{ type: "google_search" }],
-  });
+    { timeout: RESEARCH_TIMEOUT_MS }
+  );
 
   const retrievedUrls = new Map<string, string>();
   let searchesUsed = 0;

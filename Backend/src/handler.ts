@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
 import { AnalysisRequestSchema } from "./schema.js";
-import { analyse as defaultAnalyse, AnalysisError } from "./analyze.js";
+import { analyse as defaultAnalyse, AnalysisError, type AnalysisClients } from "./analyze.js";
 import { checkRateLimit, checkDailyLimit } from "./rateLimit.js";
 import { verifyClient } from "./attest.js";
 import { tryAcquire, release } from "./concurrency.js";
@@ -43,26 +44,45 @@ export interface HandlerDependencies {
   analyse?: typeof defaultAnalyse;
 }
 
-let cachedClient: GoogleGenAI | null = null;
+let cachedClients: AnalysisClients | null = null;
 
-function getClient(): GoogleGenAI {
-  if (!cachedClient) {
-    // The credential lives here and only here. It is read from the environment
-    // and never echoed into a response or a log line.
-    cachedClient = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      // Confirmed live: the SDK's default retry policy (up to 5 attempts, up
-      // to 60s between them) silently eats the whole request on a 429 or 5xx
-      // -- indistinguishable from the app just hanging, and long enough on
-      // its own to blow Vercel's 60s ceiling even for a "simple" decision.
-      // Fail fast instead: a real rate limit or transient error surfaces
-      // immediately as a normal thrown error (already handled below --
-      // rate_limited_upstream / upstream_unavailable), which is a much
-      // better experience than a minute of silence before a generic timeout.
-      httpOptions: { retryOptions: { attempts: 1 } },
-    });
+function getClients(): AnalysisClients {
+  if (!cachedClients) {
+    // The credentials live here and only here. Each is read from the
+    // environment and never echoed into a response or a log line.
+    cachedClients = {
+      gemini: new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        // Confirmed live: the SDK's default retry policy (up to 5 attempts, up
+        // to 60s between them) silently eats the whole request on a 429 or 5xx
+        // -- indistinguishable from the app just hanging, and long enough on
+        // its own to blow Vercel's 60s ceiling even for a "simple" decision.
+        // Fail fast instead: a real rate limit or transient error surfaces
+        // immediately as a normal thrown error (already handled below --
+        // rate_limited_upstream / upstream_unavailable), which is a much
+        // better experience than a minute of silence before a generic timeout.
+        httpOptions: { retryOptions: { attempts: 1 } },
+      }),
+      // Groq's API is OpenAI-compatible, so the official `openai` SDK talks
+      // to it directly -- no separate Groq SDK. Used only for "complex"
+      // (see budget.ts). Same fail-fast reasoning as Gemini above: the
+      // OpenAI SDK also retries by default, so pin it to 0 extra retries.
+      //
+      // Unlike GoogleGenAI, the OpenAI SDK throws at CONSTRUCTION time if no
+      // key resolves (here or via OPENAI_API_KEY) -- confirmed live: with
+      // GROQ_API_KEY unset, this crashed getClients() itself, which failed
+      // every request of every complexity, not just "complex" ones, since
+      // this function builds both clients up front. A placeholder keeps
+      // construction safe; a real request with no real key still fails,
+      // correctly, as a 401 from Groq once analyseWithGroq() actually calls it.
+      groq: new OpenAI({
+        apiKey: process.env.GROQ_API_KEY ?? "unset",
+        baseURL: "https://api.groq.com/openai/v1",
+        maxRetries: 0,
+      }),
+    };
   }
-  return cachedClient;
+  return cachedClients;
 }
 
 /** Framework-agnostic so the same code runs standalone or on a serverless host. */
@@ -191,7 +211,7 @@ export async function handle(
   }
 
   try {
-    const result = await analyse(getClient(), parsed.data);
+    const result = await analyse(getClients(), parsed.data);
     return json(200, result);
   } catch (error) {
     // A failed attempt shouldn't cost a Free user real budget or a real

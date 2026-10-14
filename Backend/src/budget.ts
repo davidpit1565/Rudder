@@ -3,27 +3,41 @@ import type { AnalysisRequest } from "./schema.js";
 /**
  * What one decision is allowed to spend.
  *
- * PREMIUM_MODEL is currently unused by design, not forgotten: confirmed live,
- * three times in a row, that a single analysis call on it -- at the lowest
- * thinking level, with zero research -- still failed to complete within
- * Vercel's 60s function-duration ceiling (two 504s, one upstream 503 after
- * the model itself took 35-47s). Every complexity runs on STANDARD_MODEL for
- * now. The Free/Pro boundary is still enforced exactly as before -- a
- * complex ("deep") decision is still the one that needs Pro or the trial --
- * it just isn't backed by a stronger model at the moment. Bring PREMIUM_MODEL
- * back for "complex" once Vercel's ceiling is raised (a paid plan lifts it to
- * 300s) or the model proves reliably faster; see AppStore/RELEASE.md. Both
- * models are on Gemini's free tier (see Backend/README.md) -- no per-token
- * credit balance that can silently run out, only rate limits that fail loud
- * and recover on their own.
+ * PREMIUM_MODEL (Gemini's stronger model) is unused by design, not
+ * forgotten: confirmed live, three times in a row, that a single analysis
+ * call on it -- at the lowest thinking level, with zero research -- still
+ * failed to complete within Vercel's 60s function-duration ceiling (two
+ * 504s, one upstream 503 after the model itself took 35-47s).
+ *
+ * The real differentiator for a "complex" decision is now GROQ_MODEL
+ * instead: Groq runs it on dedicated inference hardware fast enough (~500
+ * tokens/sec) to plausibly fit the same 60s ceiling that defeated
+ * PREMIUM_MODEL, and it's free of charge, same as Gemini's tier here.
+ * Research stays on Gemini for every complexity regardless -- its
+ * google_search tool returns the clean, structured URL citations the
+ * allow-list in validate.ts depends on; Groq's web-search tool returns
+ * inline citation markers with no documented way to map them back to real
+ * URLs, which isn't a safe foundation for "never cite a URL that wasn't
+ * actually retrieved".
+ *
+ * Both Gemini models are on its free tier (see Backend/README.md) -- no
+ * per-token credit balance that can silently run out, only rate limits that
+ * fail loud and recover on their own.
  */
 export const PREMIUM_MODEL = "gemini-3.8-flash";
 export const STANDARD_MODEL = "gemini-3.5-flash-lite";
+export const GROQ_MODEL = "openai/gpt-oss-120b";
 
 export type Effort = "low" | "medium" | "high";
+export type Provider = "gemini" | "groq";
 
 export interface Budget {
+  /** Which provider analyse() should call for the main analysis step. */
+  provider: Provider;
+  /** The model for the analysis call, on `provider`. */
   model: string;
+  /** The model for the research call -- always a Gemini model; see above. */
+  researchModel: string;
   effort: Effort;
   maxTokens: number;
   /** Server-side web searches allowed for this decision. 0 means no research call at all. */
@@ -51,7 +65,8 @@ export function budgetFor(request: AnalysisRequest): Budget {
     Math.min(request.questionCeiling - request.questionsAlreadyAsked, 5)
   );
 
-  const model = STANDARD_MODEL;
+  const provider: Provider = request.complexity === "complex" ? "groq" : "gemini";
+  const model = provider === "groq" ? GROQ_MODEL : STANDARD_MODEL;
 
-  return { model, effort, maxTokens, maxSearches, questionsRemaining };
+  return { provider, model, researchModel: STANDARD_MODEL, effort, maxTokens, maxSearches, questionsRemaining };
 }
