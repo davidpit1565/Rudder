@@ -43,6 +43,8 @@
 		EFB81D6D6C3BEA3FF877327F /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 907498C607F1070DE9CDBD4C /* SubscriptionService.swift */; };
 		F23200FD98BF76BF59388420 /* PersistenceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5DF426E98B5358999EEDD7 /* PersistenceModels.swift */; };
 		F781F5D7C3A1DAEC6967EB4C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D99585940BDA9BE08706266D /* Assets.xcassets */; };
+		F30E2914E5BE8BCD0B8C046B /* StagedWorkingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF615D4E784D67273CF4099 /* StagedWorkingView.swift */; };
+		6739C20BBE9B3B2A2F799AB8 /* StagedProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AB0001DEA733A6DC39E5EC4 /* StagedProgressTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -119,6 +121,8 @@
 		F112DAB7643C06571B0F5DC0 /* PersistenceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceService.swift; sourceTree = "<group>"; };
 		FC9987B51A64B70B271C1709 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		FE8350CF53FE2FF0F11A9AF5 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
+		8EF615D4E784D67273CF4099 /* StagedWorkingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StagedWorkingView.swift; sourceTree = "<group>"; };
+		4AB0001DEA733A6DC39E5EC4 /* StagedProgressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StagedProgressTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -167,6 +171,7 @@
 				D4847B014C5DB973D36FF669 /* EndToEndTests.swift */,
 				20D540AC56EB3EA5E0B11DCD /* EntitlementTests.swift */,
 				2C959B0BD4C2EA15F24A61D7 /* PersistenceServiceTests.swift */,
+				4AB0001DEA733A6DC39E5EC4 /* StagedProgressTests.swift */,
 			);
 			path = RudderAppTests;
 			sourceTree = "<group>";
@@ -339,6 +344,7 @@
 			isa = PBXGroup;
 			children = (
 				BC92AA826F25120E0B2A1306 /* DecisionFlowView.swift */,
+				8EF615D4E784D67273CF4099 /* StagedWorkingView.swift */,
 			);
 			path = NewDecision;
 			sourceTree = "<group>";
@@ -528,6 +534,7 @@
 				75CCF1272437CE7BD5752D44 /* AppEnvironment.swift in Sources */,
 				63FA111DDFEFCD744E7DCE7F /* DecisionDetailsView.swift in Sources */,
 				DAE01BFE94A84AF84F8F33C8 /* DecisionFlowView.swift in Sources */,
+				F30E2914E5BE8BCD0B8C046B /* StagedWorkingView.swift in Sources */,
 				9306A4115F934433A11BFBD1 /* DecisionsView.swift in Sources */,
 				85C05B353439F5665FB51B5B /* HomeView.swift in Sources */,
 				236410532F9C300230C4E051 /* InstallIdentity.swift in Sources */,
@@ -564,6 +571,7 @@
 				076C27D9F28624B3A990B993 /* EndToEndTests.swift in Sources */,
 				1D164F516F74A7CE07498B59 /* EntitlementTests.swift in Sources */,
 				4C8F44EF557DAB0ECC551D40 /* PersistenceServiceTests.swift in Sources */,
+				6739C20BBE9B3B2A2F799AB8 /* StagedProgressTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
