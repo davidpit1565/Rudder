@@ -233,7 +233,11 @@ final class DecisionCoordinatorTests: XCTestCase {
         let trivialCoordinator = makeCoordinator(trivial)
         trivialCoordinator.start(prompt: "Pizza or pasta tonight?")
         try await settle(trivialCoordinator)
-        XCTAssertEqual(trivialCoordinator.activeResearchLevel, .none)
+        // `.none` here would be parsed as Optional.none (nil), not
+        // ResearchLevel.none wrapped in .some -- the property is genuinely set
+        // to .some(.none) for a trivial decision, never left nil, so this must
+        // name the wrapped type explicitly.
+        XCTAssertEqual(trivialCoordinator.activeResearchLevel, ResearchLevel.none)
 
         let expensive = MockAnalysisService(response: Responses.ready())
         let expensiveCoordinator = makeCoordinator(expensive)
@@ -251,7 +255,11 @@ final class DecisionCoordinatorTests: XCTestCase {
 
         coordinator.start(prompt: "Pizza or pasta tonight?")
         try await settle(coordinator)
-        XCTAssertEqual(coordinator.activeResearchLevel, .none, "A new, trivial decision must not carry over the previous one's research level")
+        XCTAssertEqual(
+            coordinator.activeResearchLevel,
+            ResearchLevel.none,
+            "A new, trivial decision must not carry over the previous one's research level"
+        )
     }
 
     // MARK: Not enough information
