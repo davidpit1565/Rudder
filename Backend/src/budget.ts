@@ -58,11 +58,18 @@ export interface Budget {
 }
 
 export function budgetFor(request: AnalysisRequest): Budget {
-  // "complex" now actually asks for more than "medium" -- previously both got
-  // the same "medium" effort, so the complexity tiers didn't differ in how
-  // hard the model tried, only in token/research ceilings. Groq's gpt-oss-120b
-  // documents low/medium/high as the only valid values for this parameter.
-  const effort: Effort = request.complexity === "simple" ? "low" : request.complexity === "medium" ? "medium" : "high";
+  // "complex" was briefly given "high" here to actually differ from "medium"
+  // in more than just token/research ceilings -- reverted after confirming
+  // live, repeatedly, that "high" effort combined with ANY research (light
+  // or deep, not just deep) reliably overran the whole pipeline deadline: two
+  // timeouts and one real Groq-side error in three attempts, versus a fast,
+  // clean 17.5s with no research. Rebalancing the research/analysis time
+  // split (see PIPELINE_DEADLINE_MS/RESEARCH_TIMEOUT_MS) didn't fix it --
+  // "high" effort with a research-augmented prompt is just too slow for
+  // Groq to reliably finish inside Vercel's 60s ceiling, which is the common
+  // case for a "complex" decision. Revisit once there's a way to raise the
+  // ceiling itself or confirm a faster way to get "high"-quality output.
+  const effort: Effort = request.complexity === "simple" ? "low" : "medium";
 
   // On Gemini, max_output_tokens is a hard cap that includes thinking tokens,
   // not just the visible answer -- a budget sized for the previous provider's

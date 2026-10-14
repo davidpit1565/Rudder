@@ -28,14 +28,17 @@ test("a trivial decision buys no research and the cheapest effort", () => {
   assert.equal(budget.model, GROQ_MODEL);
 });
 
-test("a complex decision gets the full research/token budget and the highest effort", () => {
+test("a complex decision gets the full research/token budget, analysed on Groq", () => {
   // PREMIUM_MODEL is unused for now -- confirmed live, three times, that it
   // doesn't complete within Vercel's 60s ceiling even at the lowest effort
   // and zero research. See the comment on PREMIUM_MODEL/GROQ_MODEL in budget.ts.
+  // Effort is "medium", not "high": confirmed live that "high" effort with
+  // ANY research reliably overran the pipeline deadline -- see the comment
+  // on `effort` in budget.ts.
   const budget = budgetFor(
     makeRequest({ complexity: "complex", researchLevel: "deep", maximumResearchCalls: 6, questionCeiling: 5 })
   );
-  assert.equal(budget.effort, "high");
+  assert.equal(budget.effort, "medium");
   assert.equal(budget.maxSearches, 2);
   assert.equal(budget.maxTokens, 16000);
   assert.equal(budget.questionsRemaining, 5);
@@ -45,8 +48,8 @@ test("a complex decision gets the full research/token budget and the highest eff
   assert.equal(budget.researchModel, STANDARD_MODEL);
 });
 
-test("every complexity is analysed on Groq; only the effort level and token/research ceilings differ", () => {
-  const efforts: Record<string, string> = { simple: "low", medium: "medium", complex: "high" };
+test("every complexity is analysed on Groq; medium and complex currently share the same effort", () => {
+  const efforts: Record<string, string> = { simple: "low", medium: "medium", complex: "medium" };
   for (const complexity of ["simple", "medium", "complex"] as const) {
     const budget = budgetFor(makeRequest({ complexity }));
     assert.equal(budget.provider, "groq");
