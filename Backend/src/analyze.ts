@@ -112,10 +112,26 @@ export async function analyse(client: GoogleGenAI, request: AnalysisRequest): Pr
   return toWireResponse(parsed.data, request, budget, retrievedUrls);
 }
 
-/** Strips an accidental markdown code fence, in case the model adds one
- * despite being told not to. */
-function extractJsonObject(text: string): string {
+/**
+ * Recovers the JSON object from the model's text, despite being told to
+ * return nothing else. Confirmed live: adding research notes to the prompt
+ * (even on a fast model, well under any time or token ceiling) made this
+ * model more likely to add a line of commentary before or after the object
+ * -- a code fence anywhere in the text, not just wrapping the whole response,
+ * and stray prose outside it. Tries, in order: the text as-is; a fence
+ * anywhere in the text; the outermost {...} span. The result is still fully
+ * re-validated against DecisionResponseSchema afterwards, so a wrong
+ * extraction here fails safely rather than reaching the app.
+ */
+export function extractJsonObject(text: string): string {
   const trimmed = text.trim();
-  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
-  return fenced ? fenced[1]! : trimmed;
+
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (fenced) return fenced[1]!;
+
+  const start = trimmed.indexOf("{");
+  const end = trimmed.lastIndexOf("}");
+  if (start !== -1 && end > start) return trimmed.slice(start, end + 1);
+
+  return trimmed;
 }
