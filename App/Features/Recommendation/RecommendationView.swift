@@ -92,8 +92,11 @@ struct RecommendationView: View {
                         Image(systemName: "chevron.right")
                             .font(.caption.weight(.semibold))
                     }
-                    .font(RudderFont.footnote)
+                    .font(RudderFont.footnote.weight(.semibold))
+                    .foregroundStyle(RudderColor.accent)
                     .frame(minHeight: RudderSpacing.minimumTouchTarget)
+                    .padding(.horizontal, RudderSpacing.m)
+                    .background(RudderColor.accent.opacity(0.12), in: Capsule())
                 }
                 .accessibilityHint("Criteria, comparison, assumptions, risks and sources")
                 if result.ranking.count > 1 {
@@ -187,7 +190,57 @@ struct RecommendationView: View {
                     kind: .warning
                 )
             }
+
+            if result.strength != .unclear {
+                analysisTeaser
+            }
         }
+    }
+
+    /// A preview of the full analysis, built from the same counts it actually
+    /// contains -- never a made-up number. Purely informational: the one way
+    /// to open the analysis stays the "See analysis" button below, in the
+    /// fixed bottom bar (see the comment on that button for why).
+    private var analysisTeaser: some View {
+        RudderCard {
+            VStack(alignment: .leading, spacing: RudderSpacing.xs) {
+                HStack(spacing: RudderSpacing.xs) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .foregroundStyle(RudderColor.accent)
+                    Text("Full analysis ready")
+                        .font(RudderFont.footnote.weight(.semibold))
+                        .foregroundStyle(RudderColor.primaryText)
+                }
+                Text(analysisTeaserSummary)
+                    .font(RudderFont.footnote)
+                    .foregroundStyle(RudderColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var analysisTeaserSummary: String {
+        var parts: [String] = []
+        if !result.criteria.isEmpty {
+            parts.append("\(result.criteria.count) \(result.criteria.count == 1 ? "criterion" : "criteria") weighed")
+        }
+        if result.ranking.count > 1 {
+            parts.append("\(result.ranking.count) options compared")
+        }
+        if !result.assumptions.isEmpty {
+            parts.append("\(result.assumptions.count) \(result.assumptions.count == 1 ? "assumption" : "assumptions") made")
+        }
+        if !result.risks.isEmpty {
+            parts.append("\(result.risks.count) \(result.risks.count == 1 ? "risk" : "risks") flagged")
+        }
+        if !result.research.isEmpty {
+            parts.append("\(result.research.count) \(result.research.count == 1 ? "source" : "sources") checked")
+        }
+        guard !parts.isEmpty else {
+            return "Tap \"See analysis\" below for the full reasoning."
+        }
+        return parts.joined(separator: " · ") + "."
     }
 }
 
