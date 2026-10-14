@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { budgetFor, PREMIUM_MODEL, STANDARD_MODEL } from "../budget.js";
+import { budgetFor, STANDARD_MODEL } from "../budget.js";
 import { AnalysisRequestSchema, SCHEMA_VERSION } from "../schema.js";
 
 function makeRequest(overrides: Record<string, unknown> = {}) {
@@ -27,19 +27,22 @@ test("a trivial decision buys no research and the cheapest effort", () => {
   assert.equal(budget.model, STANDARD_MODEL);
 });
 
-test("a complex decision runs on the premium model, at low effort so it still clears the time budget", () => {
+test("a complex decision gets the full research/token budget, on the same model as everything else", () => {
+  // PREMIUM_MODEL is unused for now -- confirmed live, three times, that it
+  // doesn't complete within Vercel's 60s ceiling even at the lowest effort
+  // and zero research. See the comment on PREMIUM_MODEL in budget.ts.
   const budget = budgetFor(
     makeRequest({ complexity: "complex", researchLevel: "deep", maximumResearchCalls: 6, questionCeiling: 5 })
   );
-  assert.equal(budget.effort, "low");
+  assert.equal(budget.effort, "medium");
   assert.equal(budget.maxSearches, 2);
   assert.equal(budget.maxTokens, 16000);
   assert.equal(budget.questionsRemaining, 5);
-  assert.equal(budget.model, PREMIUM_MODEL);
+  assert.equal(budget.model, STANDARD_MODEL);
 });
 
-test("simple and medium decisions run on the standard model, free and unlimited", () => {
-  for (const complexity of ["simple", "medium"] as const) {
+test("every complexity runs on the standard model, free and unlimited", () => {
+  for (const complexity of ["simple", "medium", "complex"] as const) {
     const budget = budgetFor(makeRequest({ complexity }));
     assert.equal(budget.model, STANDARD_MODEL);
   }
