@@ -1,5 +1,6 @@
 import type { GoogleGenAI } from "@google/genai";
 import type OpenAI from "openai";
+import { APIConnectionTimeoutError } from "openai";
 import { DecisionResponseSchema, type AnalysisRequest, type WireResponse } from "./schema.js";
 import { budgetFor, type Budget } from "./budget.js";
 import { SYSTEM_PROMPT, OUTPUT_FORMAT_INSTRUCTIONS, buildUserMessage } from "./prompt.js";
@@ -19,11 +20,25 @@ export interface AnalysisClients {
 }
 
 /**
+ * Wall-clock budget for the whole pipeline (research + analysis), well under
+ * Vercel's 60s hard function-duration ceiling. Confirmed live: even with the
+ * SDK's own retry-on-rate-limit disabled (see getClients() in handler.ts),
+ * a single Gemini call can itself take 25-50+ seconds under real load, with
+ * no error of any kind until Vercel kills the function cold -- a bare
+ * FUNCTION_INVOCATION_TIMEOUT, no JSON body, indistinguishable to the app
+ * from a crash. That is a different failure than the retry storm: it can
+ * happen on the first and only attempt. Bounding each call explicitly turns
+ * it into a normal, fast, JSON `upstream_unavailable` instead.
+ */
+const PIPELINE_DEADLINE_MS = 50_000;
+
+/**
  * The whole pipeline for one decision: research what can be researched, then
  * analyse, then validate before anything is returned.
  */
 export async function analyse(clients: AnalysisClients, request: AnalysisRequest): Promise<WireResponse> {
   const budget = budgetFor(request);
+  const pipelineStart = Date.now();
 
   let researchNotes: string | null = null;
   let retrievedUrls = new Map<string, string>();
@@ -38,14 +53,21 @@ export async function analyse(clients: AnalysisClients, request: AnalysisRequest
     }
   } catch {
     // Research is best-effort: the analysis proceeds and says what it could not
-    // verify, rather than failing the whole decision.
+    // verify, rather than failing the whole decision. This also covers research
+    // timing out (see PIPELINE_DEADLINE_MS) -- same handling either way.
     researchNotes = null;
   }
 
+  // Whatever research did or didn't use, the analysis call gets what's left
+  // of the shared deadline, never the full budget again -- otherwise two
+  // sequential Gemini calls (research, then analysis) could each individually
+  // stay under their own cap while still blowing the 60s ceiling together.
+  const analysisTimeoutMs = Math.max(10_000, PIPELINE_DEADLINE_MS - (Date.now() - pipelineStart));
+
   const text =
     budget.provider === "groq"
-      ? await analyseWithGroq(clients.groq, request, budget, researchNotes)
-      : await analyseWithGemini(clients.gemini, request, budget, researchNotes);
+      ? await analyseWithGroq(clients.groq, request, budget, researchNotes, analysisTimeoutMs)
+      : await analyseWithGemini(clients.gemini, request, budget, researchNotes, analysisTimeoutMs);
 
   let rawOutput: unknown;
   try {
@@ -79,16 +101,23 @@ function throwForUpstreamError(provider: string, error: unknown): never {
   const status = typeof (error as { status?: unknown })?.status === "number"
     ? (error as { status: number }).status
     : undefined;
+  // A client-side request timeout (see PIPELINE_DEADLINE_MS) carries no HTTP
+  // status -- there was no response -- so it isn't caught by the status check
+  // below. Each SDK names its timeout error differently: Gemini sets
+  // `.name` explicitly; the OpenAI SDK's is a real exported class instead.
+  const isTimeout =
+    (error as { name?: unknown })?.name === "RequestTimeoutError" || error instanceof APIConnectionTimeoutError;
   console.error(`${provider} API error`, {
     name: error instanceof Error ? error.name : typeof error,
     status,
+    isTimeout,
     message: error instanceof Error ? error.message : String(error),
   });
 
   if (status === 429) {
     throw new AnalysisError("rate_limited_upstream", 429);
   }
-  if (status === 503 || status === 504 || status === 408) {
+  if (status === 503 || status === 504 || status === 408 || isTimeout) {
     throw new AnalysisError("upstream_unavailable", 503);
   }
   if (status !== undefined) {
@@ -101,20 +130,24 @@ async function analyseWithGemini(
   client: GoogleGenAI,
   request: AnalysisRequest,
   budget: Budget,
-  researchNotes: string | null
+  researchNotes: string | null,
+  timeoutMs: number
 ): Promise<string> {
   let interaction;
   try {
-    interaction = await client.interactions.create({
-      model: budget.model,
-      input: buildUserMessage(request, budget, researchNotes),
-      system_instruction: `${SYSTEM_PROMPT}\n\n${OUTPUT_FORMAT_INSTRUCTIONS}`,
-      generation_config: {
-        thinking_level: budget.effort,
-        max_output_tokens: budget.maxTokens,
+    interaction = await client.interactions.create(
+      {
+        model: budget.model,
+        input: buildUserMessage(request, budget, researchNotes),
+        system_instruction: `${SYSTEM_PROMPT}\n\n${OUTPUT_FORMAT_INSTRUCTIONS}`,
+        generation_config: {
+          thinking_level: budget.effort,
+          max_output_tokens: budget.maxTokens,
+        },
+        response_format: { type: "text", mime_type: "application/json" },
       },
-      response_format: { type: "text", mime_type: "application/json" },
-    });
+      { timeout: timeoutMs }
+    );
   } catch (error) {
     throwForUpstreamError("Gemini", error);
   }
@@ -136,19 +169,23 @@ async function analyseWithGroq(
   client: OpenAI,
   request: AnalysisRequest,
   budget: Budget,
-  researchNotes: string | null
+  researchNotes: string | null,
+  timeoutMs: number
 ): Promise<string> {
   let completion;
   try {
-    completion = await client.chat.completions.create({
-      model: budget.model,
-      messages: [
-        { role: "system", content: `${SYSTEM_PROMPT}\n\n${OUTPUT_FORMAT_INSTRUCTIONS}` },
-        { role: "user", content: buildUserMessage(request, budget, researchNotes) },
-      ],
-      reasoning_effort: budget.effort,
-      max_completion_tokens: budget.maxTokens,
-    });
+    completion = await client.chat.completions.create(
+      {
+        model: budget.model,
+        messages: [
+          { role: "system", content: `${SYSTEM_PROMPT}\n\n${OUTPUT_FORMAT_INSTRUCTIONS}` },
+          { role: "user", content: buildUserMessage(request, budget, researchNotes) },
+        ],
+        reasoning_effort: budget.effort,
+        max_completion_tokens: budget.maxTokens,
+      },
+      { timeout: timeoutMs }
+    );
   } catch (error) {
     throwForUpstreamError("Groq", error);
   }
