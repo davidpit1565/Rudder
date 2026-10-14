@@ -224,6 +224,44 @@ final class DecisionCoordinatorTests: XCTestCase {
         XCTAssertEqual(service.lastRequest()?.questionCeiling, 5)
     }
 
+    /// The working screen (StagedWorkingView, App/Features/NewDecision) decides
+    /// whether to show a "looking things up" stage from exactly this property --
+    /// it must match whatever researchLevel the request actually went out with,
+    /// never a guess.
+    func testActiveResearchLevelMatchesWhatWasActuallySent() async throws {
+        let trivial = MockAnalysisService(response: Responses.ready())
+        let trivialCoordinator = makeCoordinator(trivial)
+        trivialCoordinator.start(prompt: "Pizza or pasta tonight?")
+        try await settle(trivialCoordinator)
+        // `.none` here would be parsed as Optional.none (nil), not
+        // ResearchLevel.none wrapped in .some -- the property is genuinely set
+        // to .some(.none) for a trivial decision, never left nil, so this must
+        // name the wrapped type explicitly.
+        XCTAssertEqual(trivialCoordinator.activeResearchLevel, ResearchLevel.none)
+
+        let expensive = MockAnalysisService(response: Responses.ready())
+        let expensiveCoordinator = makeCoordinator(expensive)
+        expensiveCoordinator.start(prompt: "Which car should I buy for €28,000?")
+        try await settle(expensiveCoordinator)
+        XCTAssertEqual(expensiveCoordinator.activeResearchLevel, .deep)
+    }
+
+    func testActiveResearchLevelIsClearedBetweenUnrelatedDecisions() async throws {
+        let service = MockAnalysisService(response: Responses.ready())
+        let coordinator = makeCoordinator(service)
+        coordinator.start(prompt: "Which car should I buy for €28,000?")
+        try await settle(coordinator)
+        XCTAssertEqual(coordinator.activeResearchLevel, .deep)
+
+        coordinator.start(prompt: "Pizza or pasta tonight?")
+        try await settle(coordinator)
+        XCTAssertEqual(
+            coordinator.activeResearchLevel,
+            ResearchLevel.none,
+            "A new, trivial decision must not carry over the previous one's research level"
+        )
+    }
+
     // MARK: Not enough information
 
     func testNothingKnownMeansNoRecommendation() async throws {

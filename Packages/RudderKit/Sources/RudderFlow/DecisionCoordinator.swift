@@ -31,6 +31,11 @@ public final class DecisionCoordinator {
     }
 
     public private(set) var phase: Phase = .idle
+    /// The research level the in-flight (or most recent) request was sent
+    /// with -- known on-device before the request goes out (`ResearchPolicy`),
+    /// so the working screen can honestly show a "looking things up" stage
+    /// only when research is genuinely part of this call, never a guess.
+    public private(set) var activeResearchLevel: ResearchLevel?
     public private(set) var preliminary: PreliminaryDirection?
     public private(set) var prompt: String = ""
     public private(set) var questionsAsked: [String] = []
@@ -149,6 +154,7 @@ public final class DecisionCoordinator {
         chosenOptionID = nil
         decisionID = UUID()
         phase = .idle
+        activeResearchLevel = nil
     }
 
     private func run() {
@@ -202,6 +208,7 @@ public final class DecisionCoordinator {
 
     private func performAnalysis() async {
         guard let classification, let budget else { return }
+        activeResearchLevel = budget.researchLevel
 
         let request = DecisionAnalysisRequest(
             prompt: prompt,

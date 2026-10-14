@@ -65,7 +65,8 @@ struct DecisionFlowView: View {
             ProgressView()
 
         case .working(let state):
-            WorkingScreen(state: state, preliminary: coordinator.preliminary)
+            WorkingScreen(state: state, researchLevel: coordinator.activeResearchLevel, preliminary: coordinator.preliminary)
+                .id(state)
 
         case .asking(let question):
             QuestionScreen(
@@ -111,15 +112,25 @@ struct DecisionFlowView: View {
 
 private struct WorkingScreen: View {
     let state: DecisionFlowState
+    let researchLevel: ResearchLevel?
     let preliminary: PreliminaryDirection?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RudderSpacing.l) {
-                WorkingStateView(
-                    title: state.progressTitle ?? "Working",
-                    subtitle: state.progressSubtitle
-                )
+                // `.understanding` is the one call most decisions ever make, and
+                // the one genuinely worth breaking into stages -- see
+                // StagedWorkingView's doc comment for what it can and can't know.
+                // Every other working state (the rarer research-loop call,
+                // readiness checks) keeps the single real label it already had.
+                if state == .understanding {
+                    StagedWorkingView(researchLevel: researchLevel)
+                } else {
+                    WorkingStateView(
+                        title: state.progressTitle ?? "Working",
+                        subtitle: state.progressSubtitle
+                    )
+                }
 
                 if let preliminary {
                     PreliminaryCard(direction: preliminary)
