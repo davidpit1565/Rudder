@@ -334,9 +334,9 @@ in `src/budget.ts`:
 
 | Complexity | Model | Effort | Searches | Max tokens |
 |---|---|---|---|---|
-| simple | gemini-3.5-flash-lite | low | 0 | 8,000 |
-| medium | gemini-3.5-flash-lite | medium | up to 2 | 8,000 |
-| complex | gemini-3.8-flash | medium | up to 2 | 8,000 |
+| simple | gemini-3.5-flash-lite | low | 0 | 16,000 |
+| medium | gemini-3.5-flash-lite | medium | up to 2 | 16,000 |
+| complex | gemini-3.8-flash | medium | up to 2 | 16,000 |
 
 Both models are on Gemini's free tier today (see `.env.example`) -- no
 per-token credit balance to run out, only rate limits that return a 429 and

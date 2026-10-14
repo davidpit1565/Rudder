@@ -37,7 +37,12 @@ export function budgetFor(request: AnalysisRequest): Budget {
   // itself hasn't moved, only the provider has. See AppStore/RELEASE.md.
   const effort: Effort = request.complexity === "simple" ? "low" : "medium";
 
-  const maxTokens = 8000;
+  // On Gemini, max_output_tokens is a hard cap that includes thinking tokens,
+  // not just the visible answer -- a budget sized for the previous provider's
+  // separate thinking/output accounting left too little room for the actual
+  // JSON once thinking ate into it (confirmed live: a "simple" decision came
+  // back with unparseable/truncated output at 8000). Doubled with margin.
+  const maxTokens = 16000;
 
   // Research is capped by the app's budget and by complexity, whichever is lower.
   const byLevel = request.researchLevel === "deep" ? 2 : request.researchLevel === "light" ? 2 : 0;
