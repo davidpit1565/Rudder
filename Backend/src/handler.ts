@@ -7,7 +7,18 @@ import { verifyClient } from "./attest.js";
 import { tryAcquire, release } from "./concurrency.js";
 import { isConfigured as isRedisConfigured } from "./redis.js";
 import { verifyAppStoreTransaction } from "./appStoreVerify.js";
-import { checkDeepDecisionQuota, refundDeepDecisionQuota, DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH } from "./quota.js";
+import {
+  checkDeepDecisionQuota,
+  refundDeepDecisionQuota,
+  peekDeepDecisionQuota,
+  DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH,
+  checkDailyQuota,
+  refundDailyQuota,
+  peekDailyQuota,
+  DEFAULT_FREE_MEDIUM_DAILY_LIMIT,
+  DEFAULT_PRO_MEDIUM_DAILY_LIMIT,
+  DEFAULT_PRO_COMPLEX_DAILY_LIMIT,
+} from "./quota.js";
 import {
   checkGlobalFreeSpendCeiling,
   refundGlobalFreeSpend,
@@ -86,6 +97,76 @@ function getClients(): AnalysisClients {
   return cachedClients;
 }
 
+/**
+ * Which daily quota bucket (if any) governs a decision of this complexity
+ * and Pro status, and its limit. "simple" is never governed by a daily
+ * quota. A Free "complex" decision isn't either -- it stays governed
+ * entirely by the existing monthly quota above (DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH),
+ * whose whole point is to make a recurring Free complex decision not exist at
+ * all, not to give it a daily allowance.
+ */
+function dailyQuotaFor(
+  complexity: "simple" | "medium" | "complex",
+  verifiedPro: boolean
+): { bucket: string; limit: number } | null {
+  if (complexity === "medium") {
+    return verifiedPro
+      ? { bucket: "medium-pro", limit: Number(process.env.DECIDE_PRO_MEDIUM_DAILY_LIMIT ?? DEFAULT_PRO_MEDIUM_DAILY_LIMIT) }
+      : { bucket: "medium-free", limit: Number(process.env.DECIDE_FREE_MEDIUM_DAILY_LIMIT ?? DEFAULT_FREE_MEDIUM_DAILY_LIMIT) };
+  }
+  if (complexity === "complex" && verifiedPro) {
+    return { bucket: "complex-pro", limit: Number(process.env.DECIDE_PRO_COMPLEX_DAILY_LIMIT ?? DEFAULT_PRO_COMPLEX_DAILY_LIMIT) };
+  }
+  return null;
+}
+
+/**
+ * Read-only: today's/this-month's usage across every quota the app shows,
+ * without spending a unit of any of them. Lets the app display "X of Y used"
+ * (e.g. in a Profile/account screen) at any time, not only right after a
+ * decision completes. Uses the same verifiedPro/installId resolution as the
+ * real analyze endpoint, so the numbers always match what analyze() would
+ * actually enforce.
+ */
+async function handleQuotaStatus(request: HandlerRequest): Promise<HandlerResponse> {
+  const client = verifyClient(request.headers);
+  if (!client.ok) {
+    return json(client.status, { error: client.reason ?? "forbidden" });
+  }
+
+  const transactionHeader = request.headers["x-rudder-transaction"];
+  const verifiedPro =
+    transactionHeader != null &&
+    verifyAppStoreTransaction(transactionHeader, { bundleId: BUNDLE_ID, productIds: PRO_PRODUCT_IDS }) !== null;
+  const installId = sanitizeInstallId(request.headers["x-rudder-install-id"]) ?? request.clientKey;
+
+  const medium = dailyQuotaFor("medium", verifiedPro)!;
+  const mediumUsage = await peekDailyQuota(medium.bucket, installId, medium.limit);
+
+  let complexMonthly: { used: number; limit: number; resetsAt: string } | null = null;
+  let complexDaily: { used: number; limit: number; resetsAt: string } | null = null;
+  if (verifiedPro) {
+    const complexPro = dailyQuotaFor("complex", true)!;
+    const usage = await peekDailyQuota(complexPro.bucket, installId, complexPro.limit);
+    complexDaily = { used: usage.used, limit: usage.limit, resetsAt: usage.resetsAt };
+  } else {
+    const monthlyLimit = Number(process.env.DECIDE_FREE_DEEP_DECISIONS_PER_MONTH ?? DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH);
+    const usage = await peekDeepDecisionQuota(installId, monthlyLimit);
+    complexMonthly = {
+      used: usage.used,
+      limit: usage.limit,
+      resetsAt: new Date(Date.now() + usage.retryAfterSeconds * 1000).toISOString(),
+    };
+  }
+
+  return json(200, {
+    isPro: verifiedPro,
+    simple: { limited: false },
+    medium: { used: mediumUsage.used, limit: mediumUsage.limit, resetsAt: mediumUsage.resetsAt },
+    complex: { monthly: complexMonthly, daily: complexDaily },
+  });
+}
+
 /** Framework-agnostic so the same code runs standalone or on a serverless host. */
 export async function handle(
   request: HandlerRequest,
@@ -98,6 +179,10 @@ export async function handle(
     // rate/concurrency limits are backed by Redis or the (cross-instance
     // unreliable, on a serverless host) in-process fallback.
     return json(200, { status: "ok", redisConfigured: isRedisConfigured() });
+  }
+
+  if (request.method === "GET" && request.path === "/v1/quota/status") {
+    return handleQuotaStatus(request);
   }
 
   if (request.method !== "POST" || request.path !== "/v1/decisions/analyze") {
@@ -148,8 +233,10 @@ export async function handle(
     : null;
 
   let deepQuotaInstallId: string | null = null;
+  let dailyQuota: { bucket: string; installId: string } | null = null;
   let freeSpentEstimate = 0;
   let absoluteSpentEstimate = 0;
+  let quotaInfo: { bucket: string; used: number; limit: number; resetsAt: string } | null = null;
 
   // The absolute ceiling applies to every request, a verified Pro transaction
   // included -- see spendCeiling.ts for why the Free-only ceiling below isn't
@@ -197,8 +284,33 @@ export async function handle(
     }
   }
 
+  // Daily quota -- see dailyQuotaFor()'s doc comment for which complexities
+  // and Pro states this governs. Runs after the monthly complex-only check
+  // above regardless of verifiedPro, since it covers a different set of
+  // cases (every "medium" decision, plus a verified-Pro "complex" one).
+  const dailyBudget = dailyQuotaFor(parsed.data.complexity, verifiedPro !== null);
+  if (dailyBudget) {
+    const installId = sanitizeInstallId(request.headers["x-rudder-install-id"]) ?? request.clientKey;
+    const decision = await checkDailyQuota(dailyBudget.bucket, installId, dailyBudget.limit);
+    if (!decision.allowed) {
+      if (freeSpentEstimate > 0) await refundGlobalFreeSpend(freeSpentEstimate);
+      await refundAbsoluteSpend(absoluteSpentEstimate);
+      return json(
+        429,
+        {
+          error: "daily_decision_limit_reached",
+          quota: { bucket: dailyBudget.bucket, used: decision.used, limit: decision.limit, resetsAt: decision.resetsAt },
+        },
+        { "Retry-After": String(decision.retryAfterSeconds) }
+      );
+    }
+    dailyQuota = { bucket: dailyBudget.bucket, installId };
+    quotaInfo = { bucket: dailyBudget.bucket, used: decision.used, limit: decision.limit, resetsAt: decision.resetsAt };
+  }
+
   async function refundSpend(): Promise<void> {
     if (deepQuotaInstallId) await refundDeepDecisionQuota(deepQuotaInstallId);
+    if (dailyQuota) await refundDailyQuota(dailyQuota.bucket, dailyQuota.installId);
     if (freeSpentEstimate > 0) await refundGlobalFreeSpend(freeSpentEstimate);
     if (absoluteSpentEstimate > 0) await refundAbsoluteSpend(absoluteSpentEstimate);
   }
@@ -213,7 +325,10 @@ export async function handle(
 
   try {
     const result = await analyse(getClients(), parsed.data);
-    return json(200, result);
+    // quotaInfo is only ever set for a complexity/Pro-state dailyQuotaFor()
+    // actually governs -- "simple", and a Free "complex" decision, carry no
+    // quota field at all, rather than a misleading one.
+    return json(200, quotaInfo ? { ...result, quota: quotaInfo } : result);
   } catch (error) {
     // A failed attempt shouldn't cost a Free user real budget or a real
     // month's decision -- only a delivered result should.

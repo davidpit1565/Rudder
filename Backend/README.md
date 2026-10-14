@@ -313,6 +313,28 @@ Two pieces close it, both server-side:
   the moment there are real paying subscribers, or their own usage gets
   throttled too.
 
+**Daily quota, on top of the monthly one above.** The monthly quota exists to
+make a *recurring Free* "complex" decision not exist at all (see its own
+comment in `src/quota.ts`). Separately, `checkDailyQuota`/`peekDailyQuota`
+enforce three independent, UTC-midnight-resetting buckets: `medium-free` and
+`medium-pro` (every "medium" decision, Free or Pro, at different ceilings --
+`DECIDE_FREE_MEDIUM_DAILY_LIMIT`/`DECIDE_PRO_MEDIUM_DAILY_LIMIT`), and
+`complex-pro` (`DECIDE_PRO_COMPLEX_DAILY_LIMIT` -- a generous abuse backstop
+on a *verified Pro* subscriber's complex decisions, which the monthly quota
+above doesn't otherwise bound at all). "simple" is never limited. A rejected
+request gets `daily_decision_limit_reached` (429) with a `quota` object
+(`bucket`/`used`/`limit`/`resetsAt`); a successful one carries the same
+`quota` object alongside its result, for any complexity a daily bucket
+actually governs.
+
+**`GET /v1/quota/status`** reads current usage across every quota the app
+shows (today's medium count, and either the monthly or the daily complex
+state depending on verified Pro status) without spending a unit of any of
+them -- for a Profile/account screen that shows "X of Y used" at any time,
+not only right after a decision completes. Uses the same
+`X-Rudder-Install-Id`/`X-Rudder-Transaction` headers as the real endpoint, so
+its numbers always match what analyzing would actually enforce.
+
 **What this does not (yet) solve:** identity itself. `appStoreVerify.ts` has
 only ever been exercised against a synthetic certificate chain built for its
 own unit tests (`src/test/appStoreVerify.test.ts`) — there is no Xcode/macOS

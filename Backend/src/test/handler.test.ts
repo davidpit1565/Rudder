@@ -3,7 +3,7 @@ import test from "node:test";
 import { handle } from "../handler.js";
 import { resetRateLimits, resolveClientKey } from "../rateLimit.js";
 import { resetConcurrency } from "../concurrency.js";
-import { resetDeepDecisionQuota } from "../quota.js";
+import { resetDeepDecisionQuota, resetDailyQuota } from "../quota.js";
 import { resetGlobalFreeSpend, resetAbsoluteSpend } from "../spendCeiling.js";
 import { AnalysisRequestSchema, SCHEMA_VERSION } from "../schema.js";
 import type { WireResponse } from "../schema.js";
@@ -236,6 +236,7 @@ test("a request with no identifiable client still gets a key", () => {
 
 test("a complex decision is capped per install once Free's monthly quota is spent", async () => {
   resetDeepDecisionQuota();
+  resetDailyQuota();
   resetGlobalFreeSpend();
   resetAbsoluteSpend();
   resetConcurrency();
@@ -258,12 +259,14 @@ test("a complex decision is capped per install once Free's monthly quota is spen
 
   delete process.env.DECIDE_FREE_DEEP_DECISIONS_PER_MONTH;
   resetDeepDecisionQuota();
+  resetDailyQuota();
   resetGlobalFreeSpend();
   resetAbsoluteSpend();
 });
 
 test("a non-complex decision never touches the deep-decision quota", async () => {
   resetDeepDecisionQuota();
+  resetDailyQuota();
   resetGlobalFreeSpend();
   resetAbsoluteSpend();
   resetConcurrency();
@@ -277,12 +280,14 @@ test("a non-complex decision never touches the deep-decision quota", async () =>
   }
 
   resetDeepDecisionQuota();
+  resetDailyQuota();
   resetGlobalFreeSpend();
   resetAbsoluteSpend();
 });
 
 test("two installs never share a deep-decision quota bucket", async () => {
   resetDeepDecisionQuota();
+  resetDailyQuota();
   resetGlobalFreeSpend();
   resetAbsoluteSpend();
   resetConcurrency();
@@ -301,12 +306,14 @@ test("two installs never share a deep-decision quota bucket", async () => {
 
   delete process.env.DECIDE_FREE_DEEP_DECISIONS_PER_MONTH;
   resetDeepDecisionQuota();
+  resetDailyQuota();
   resetGlobalFreeSpend();
   resetAbsoluteSpend();
 });
 
 test("a failed complex analysis refunds the quota instead of spending it for nothing", async () => {
   resetDeepDecisionQuota();
+  resetDailyQuota();
   resetGlobalFreeSpend();
   resetAbsoluteSpend();
   resetConcurrency();
@@ -330,12 +337,14 @@ test("a failed complex analysis refunds the quota instead of spending it for not
   delete process.env.DECIDE_FREE_DEEP_DECISIONS_PER_MONTH;
   resetConcurrency();
   resetDeepDecisionQuota();
+  resetDailyQuota();
   resetGlobalFreeSpend();
   resetAbsoluteSpend();
 });
 
 test("a global monthly Free-spend ceiling trips once total estimated spend crosses it, across every install", async () => {
   resetDeepDecisionQuota();
+  resetDailyQuota();
   resetGlobalFreeSpend();
   resetAbsoluteSpend();
   resetConcurrency();
@@ -360,6 +369,7 @@ test("a global monthly Free-spend ceiling trips once total estimated spend cross
 
   delete process.env.DECIDE_MONTHLY_FREE_SPEND_CEILING_USD;
   resetDeepDecisionQuota();
+  resetDailyQuota();
   resetGlobalFreeSpend();
   resetAbsoluteSpend();
 });
@@ -457,4 +467,206 @@ test("a failed Pro analysis refunds the absolute ceiling instead of spending it 
   delete process.env.DECIDE_MONTHLY_ABSOLUTE_SPEND_CEILING_USD;
   resetGlobalFreeSpend();
   resetAbsoluteSpend();
+});
+
+// --- Daily quota (medium, and complex for a verified Pro subscriber) ---
+
+test("a Free medium decision is capped per install per day, at the Free limit", async () => {
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+  resetConcurrency();
+  process.env.DECIDE_FREE_MEDIUM_DAILY_LIMIT = "3";
+  const { analyse, release } = controllableAnalyse();
+  release();
+
+  const headers = { "x-rudder-install-id": "daily-medium-free" };
+  for (let i = 1; i <= 3; i++) {
+    const response = await handle(request({ headers, body: validBody({ complexity: "medium" }) }), { analyse });
+    assert.equal(response.status, 200, `decision ${i} of 3 should be allowed`);
+    const body = JSON.parse(response.body);
+    assert.equal(body.quota.bucket, "medium-free");
+    assert.equal(body.quota.used, i);
+    assert.equal(body.quota.limit, 3);
+  }
+
+  const fourth = await handle(request({ headers, body: validBody({ complexity: "medium" }) }), { analyse });
+  assert.equal(fourth.status, 429);
+  assert.equal(JSON.parse(fourth.body).error, "daily_decision_limit_reached");
+  assert.ok(Number(fourth.headers["Retry-After"]) > 0);
+
+  delete process.env.DECIDE_FREE_MEDIUM_DAILY_LIMIT;
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+});
+
+test("a verified Pro subscriber gets a higher daily medium limit than Free, in its own bucket", async () => {
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+  resetConcurrency();
+  process.env.DECIDE_FREE_MEDIUM_DAILY_LIMIT = "1";
+  process.env.DECIDE_PRO_MEDIUM_DAILY_LIMIT = "2";
+  const { analyse, release } = controllableAnalyse();
+  release();
+
+  const headers = { "x-rudder-install-id": "daily-medium-pro", ...verifiedProHeaders() };
+  const first = await withTestAppleRoot(() => handle(request({ headers, body: validBody({ complexity: "medium" }) }), { analyse }));
+  assert.equal(first.status, 200);
+  assert.equal(JSON.parse(first.body).quota.bucket, "medium-pro");
+  // A Free request from the SAME install-id, with no transaction header, is a
+  // separate bucket -- would already be over Free's limit of 1 if it shared
+  // Pro's count.
+  const second = await withTestAppleRoot(() => handle(request({ headers, body: validBody({ complexity: "medium" }) }), { analyse }));
+  assert.equal(second.status, 200, "Pro's own limit of 2 allows a second medium decision today");
+
+  const third = await withTestAppleRoot(() => handle(request({ headers, body: validBody({ complexity: "medium" }) }), { analyse }));
+  assert.equal(third.status, 429, "the third exceeds Pro's own limit of 2");
+
+  delete process.env.DECIDE_FREE_MEDIUM_DAILY_LIMIT;
+  delete process.env.DECIDE_PRO_MEDIUM_DAILY_LIMIT;
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+});
+
+test("a verified Pro subscriber still has a daily cap on complex decisions, separate from Free's monthly one", async () => {
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+  resetConcurrency();
+  process.env.DECIDE_PRO_COMPLEX_DAILY_LIMIT = "2";
+  const { analyse, release } = controllableAnalyse();
+  release();
+
+  const headers = { "x-rudder-install-id": "daily-complex-pro", ...verifiedProHeaders() };
+  for (let i = 1; i <= 2; i++) {
+    const response = await withTestAppleRoot(() =>
+      handle(request({ headers, body: validBody({ complexity: "complex" }) }), { analyse })
+    );
+    assert.equal(response.status, 200, `Pro complex decision ${i} of 2 should be allowed`);
+    assert.equal(JSON.parse(response.body).quota.bucket, "complex-pro");
+  }
+
+  const third = await withTestAppleRoot(() =>
+    handle(request({ headers, body: validBody({ complexity: "complex" }) }), { analyse })
+  );
+  assert.equal(third.status, 429);
+  assert.equal(JSON.parse(third.body).error, "daily_decision_limit_reached");
+
+  delete process.env.DECIDE_PRO_COMPLEX_DAILY_LIMIT;
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+});
+
+test("a simple decision never carries a quota field and is never daily-limited", async () => {
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+  resetConcurrency();
+  const { analyse, release } = controllableAnalyse();
+  release();
+
+  const headers = { "x-rudder-install-id": "daily-simple-unlimited" };
+  for (let i = 0; i < 10; i++) {
+    const response = await handle(request({ headers, body: validBody({ complexity: "simple" }) }), { analyse });
+    assert.equal(response.status, 200);
+    assert.equal(JSON.parse(response.body).quota, undefined);
+  }
+
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+});
+
+test("a failed medium analysis refunds the daily quota instead of spending it for nothing", async () => {
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+  resetConcurrency();
+  process.env.DECIDE_FREE_MEDIUM_DAILY_LIMIT = "1";
+  const failing = async (): Promise<WireResponse> => {
+    throw new Error("boom");
+  };
+
+  const headers = { "x-rudder-install-id": "daily-medium-refund" };
+  for (let i = 0; i < 5; i++) {
+    const response = await handle(request({ headers, body: validBody({ complexity: "medium" }) }), { analyse: failing });
+    assert.equal(response.status, 500, "every attempt fails, but none should exhaust the daily quota");
+  }
+
+  delete process.env.DECIDE_FREE_MEDIUM_DAILY_LIMIT;
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+});
+
+// --- GET /v1/quota/status ---
+
+test("quota status reports Free medium usage and the complex monthly state, unauthenticated as Free", async () => {
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+
+  const headers = { "x-rudder-install-id": "status-free-install" };
+  const { analyse, release } = controllableAnalyse();
+  release();
+  await handle(request({ headers, body: validBody({ complexity: "medium" }) }), { analyse });
+
+  const status = await handle({ method: "GET", path: "/v1/quota/status", headers, body: "", clientKey: "status-test" });
+  assert.equal(status.status, 200);
+  const body = JSON.parse(status.body);
+  assert.equal(body.isPro, false);
+  assert.equal(body.simple.limited, false);
+  assert.equal(body.medium.used, 1);
+  assert.ok(body.medium.limit > 0);
+  assert.equal(body.complex.daily, null, "a Free install has no daily complex bucket");
+  assert.ok(body.complex.monthly, "a Free install's complex status is the monthly quota");
+
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+});
+
+test("quota status reports Pro's daily complex bucket instead of the monthly one", async () => {
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+
+  const headers = { "x-rudder-install-id": "status-pro-install", ...verifiedProHeaders() };
+  const status = await withTestAppleRoot(() =>
+    handle({ method: "GET", path: "/v1/quota/status", headers, body: "", clientKey: "status-test-pro" })
+  );
+  assert.equal(status.status, 200);
+  const body = JSON.parse(status.body);
+  assert.equal(body.isPro, true);
+  assert.equal(body.complex.monthly, null, "a Pro install's complex status is the daily bucket, not monthly");
+  assert.ok(body.complex.daily, "a Pro install has a daily complex bucket");
+  assert.equal(body.complex.daily.used, 0);
+
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+});
+
+test("quota status never spends a unit of what it reports", async () => {
+  resetDeepDecisionQuota();
+  resetDailyQuota();
+
+  const headers = { "x-rudder-install-id": "status-no-spend" };
+  const first = await handle({ method: "GET", path: "/v1/quota/status", headers, body: "", clientKey: "status-peek" });
+  const second = await handle({ method: "GET", path: "/v1/quota/status", headers, body: "", clientKey: "status-peek" });
+  assert.equal(JSON.parse(first.body).medium.used, 0);
+  assert.equal(JSON.parse(second.body).medium.used, 0, "reading status twice must not look like two decisions");
+
+  resetDeepDecisionQuota();
+  resetDailyQuota();
 });

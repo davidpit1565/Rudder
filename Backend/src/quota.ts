@@ -85,6 +85,32 @@ export async function refundDeepDecisionQuota(installId: string, now: number = D
   if (existing && existing.monthKey === monthKey && existing.count > 0) existing.count -= 1;
 }
 
+/** Reads the monthly complex-decision quota's current usage without spending
+ * a unit -- for showing "first decision used" / "N of M this month" in the
+ * app without that look itself counting as a decision. */
+export async function peekDeepDecisionQuota(
+  installId: string,
+  limit: number = DEFAULT_FREE_DEEP_DECISIONS_PER_MONTH,
+  now: number = Date.now()
+): Promise<QuotaDecision> {
+  const { monthKey, secondsRemaining } = monthKeyAndSecondsRemaining(now);
+  const effectiveLimit = Math.max(limit, 1);
+  if (isConfigured()) {
+    try {
+      const [count] = await pipeline([["GET", `decide:deepquota:${monthKey}:${installId}`]]);
+      const used = Number(count ?? 0);
+      return { allowed: used < effectiveLimit, used, limit, retryAfterSeconds: secondsRemaining };
+    } catch {
+      // Same reasoning as peekDailyQuota: a display-only read that fails
+      // reports the safe (zero-usage) answer rather than failing closed.
+      return { allowed: true, used: 0, limit, retryAfterSeconds: secondsRemaining };
+    }
+  }
+  const existing = localCounters.get(installId);
+  const used = existing && existing.monthKey === monthKey ? existing.count : 0;
+  return { allowed: used < effectiveLimit, used, limit, retryAfterSeconds: secondsRemaining };
+}
+
 async function checkRedis(
   installId: string,
   monthKey: string,
@@ -130,4 +156,159 @@ function checkLocal(installId: string, monthKey: string, limit: number, secondsR
 
 export function resetDeepDecisionQuota(): void {
   localCounters.clear();
+}
+
+/**
+ * Daily quota buckets -- separate from the monthly complex-only quota above.
+ * "simple" is always unlimited. "medium" is capped per day for both Free and
+ * Pro (a higher cap for Pro). "complex" additionally gets a daily cap even
+ * for a verified Pro subscriber: unlike the monthly quota above (which
+ * exists specifically to make a *Free*-tier complex decision rare), this one
+ * is a pure abuse backstop for Pro, set generous enough that no real user
+ * doing real decision-making hits it.
+ *
+ * `bucket` names which cap this is ("medium-free", "medium-pro",
+ * "complex-pro") so the same install is tracked independently per bucket --
+ * switching between Free and Pro mid-day, or between complexities, never
+ * shares or resets another bucket's count.
+ *
+ * Resets at UTC midnight, not local time: this matches the existing monthly
+ * quota's own UTC month boundary above, and avoids the alternative (a
+ * rolling 24h-from-first-use window per install) needing its own per-user
+ * anchor timestamp -- more storage, and a reset time that looks arbitrary to
+ * the one user who hits it. UTC's own midnight sits within an hour of
+ * London's (GMT, or BST in summer), which is the one piece of real-world
+ * framing this needs.
+ */
+export const DEFAULT_FREE_MEDIUM_DAILY_LIMIT = 5;
+export const DEFAULT_PRO_MEDIUM_DAILY_LIMIT = 15;
+export const DEFAULT_PRO_COMPLEX_DAILY_LIMIT = 5;
+
+interface DailyCounter {
+  count: number;
+  dayKey: string;
+}
+
+const dailyLocalCounters = new Map<string, DailyCounter>();
+
+function dayKeyAndSecondsRemaining(now: number): { dayKey: string; secondsRemaining: number; resetsAt: string } {
+  const d = new Date(now);
+  const dayKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+  const nextDay = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1);
+  return { dayKey, secondsRemaining: Math.ceil((nextDay - now) / 1000), resetsAt: new Date(nextDay).toISOString() };
+}
+
+export interface DailyQuotaDecision extends QuotaDecision {
+  /** ISO 8601 instant this bucket next resets -- the next UTC midnight. */
+  resetsAt: string;
+}
+
+/** Spends one unit of `bucket`'s daily quota and reports whether it fit.
+ * Called before the (expensive) analysis runs -- pair with
+ * `refundDailyQuota` if the analysis then fails, so a transient error
+ * doesn't cost the user a real attempt. Unlike the monthly complex quota
+ * above, there is no "first spend is always free" exception here -- every
+ * bucket's limit is already a real, positive daily allowance. */
+export async function checkDailyQuota(
+  bucket: string,
+  installId: string,
+  limit: number,
+  now: number = Date.now()
+): Promise<DailyQuotaDecision> {
+  const { dayKey, secondsRemaining, resetsAt } = dayKeyAndSecondsRemaining(now);
+  const decision = isConfigured()
+    ? await checkDailyRedis(bucket, installId, dayKey, limit, secondsRemaining)
+    : checkDailyLocal(bucket, installId, dayKey, limit, secondsRemaining);
+  return { ...decision, resetsAt };
+}
+
+/** Reads `bucket`'s current usage without spending a unit -- for showing
+ * "X of Y used today" in the app without that look itself counting as a
+ * decision. */
+export async function peekDailyQuota(
+  bucket: string,
+  installId: string,
+  limit: number,
+  now: number = Date.now()
+): Promise<DailyQuotaDecision> {
+  const { dayKey, secondsRemaining, resetsAt } = dayKeyAndSecondsRemaining(now);
+  if (isConfigured()) {
+    try {
+      const [count] = await pipeline([["GET", `decide:dailyquota:${bucket}:${dayKey}:${installId}`]]);
+      const used = Number(count ?? 0);
+      return { allowed: used < limit, used, limit, retryAfterSeconds: secondsRemaining, resetsAt };
+    } catch {
+      // A peek that can't be read reports the safe (zero-usage) answer --
+      // unlike checkDailyRedis, nothing is actually being spent here, so
+      // failing open on a display-only read doesn't risk real over-spend.
+      return { allowed: true, used: 0, limit, retryAfterSeconds: secondsRemaining, resetsAt };
+    }
+  }
+  const existing = dailyLocalCounters.get(`${bucket}:${installId}`);
+  const used = existing && existing.dayKey === dayKey ? existing.count : 0;
+  return { allowed: used < limit, used, limit, retryAfterSeconds: secondsRemaining, resetsAt };
+}
+
+/** Best-effort: gives back one unit of `bucket`'s daily quota after a failed
+ * analysis. A lost refund (e.g. a transient Redis error) only makes the
+ * quota one attempt stricter for that install today -- never looser, which
+ * is the direction that would actually cost money. */
+export async function refundDailyQuota(bucket: string, installId: string, now: number = Date.now()): Promise<void> {
+  const { dayKey } = dayKeyAndSecondsRemaining(now);
+  if (isConfigured()) {
+    try {
+      await pipeline([["DECR", `decide:dailyquota:${bucket}:${dayKey}:${installId}`]]);
+    } catch {
+      // See doc comment: acceptable to lose a refund, never to fabricate one.
+    }
+    return;
+  }
+  const key = `${bucket}:${installId}`;
+  const existing = dailyLocalCounters.get(key);
+  if (existing && existing.dayKey === dayKey && existing.count > 0) existing.count -= 1;
+}
+
+async function checkDailyRedis(
+  bucket: string,
+  installId: string,
+  dayKey: string,
+  limit: number,
+  secondsRemaining: number
+): Promise<QuotaDecision> {
+  const key = `decide:dailyquota:${bucket}:${dayKey}:${installId}`;
+  try {
+    // A 2-day TTL rather than exactly "until midnight": it only needs to
+    // outlive the day, and NX means it's set once, on the first spend.
+    const [count] = await pipeline([
+      ["INCR", key],
+      ["EXPIRE", key, 2 * 24 * 60 * 60, "NX"],
+    ]);
+    const used = Number(count);
+    return { allowed: used <= limit, used, limit, retryAfterSeconds: secondsRemaining };
+  } catch {
+    // Fails closed, same reasoning as rateLimit.ts: a quota that can't be
+    // reached must not become an unlimited one.
+    return { allowed: false, used: limit + 1, limit, retryAfterSeconds: secondsRemaining };
+  }
+}
+
+function checkDailyLocal(
+  bucket: string,
+  installId: string,
+  dayKey: string,
+  limit: number,
+  secondsRemaining: number
+): QuotaDecision {
+  const key = `${bucket}:${installId}`;
+  const existing = dailyLocalCounters.get(key);
+  if (!existing || existing.dayKey !== dayKey) {
+    dailyLocalCounters.set(key, { count: 1, dayKey });
+    return { allowed: 1 <= limit, used: 1, limit, retryAfterSeconds: secondsRemaining };
+  }
+  existing.count += 1;
+  return { allowed: existing.count <= limit, used: existing.count, limit, retryAfterSeconds: secondsRemaining };
+}
+
+export function resetDailyQuota(): void {
+  dailyLocalCounters.clear();
 }
