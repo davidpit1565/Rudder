@@ -1,6 +1,9 @@
 import Foundation
 import Observation
 import RudderCore
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// A direction RUDDER already has before it finishes — shown so the user gets
 /// something useful in the first few seconds rather than a spinner.
@@ -42,6 +45,9 @@ public final class DecisionCoordinator {
     private var researchAttempted = false
     private var modelCallsUsed = 0
     private var task: Task<Void, Never>?
+    #if canImport(UIKit)
+    private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+    #endif
 
     private let service: DecisionAnalysisService
     private let analytics: AnalyticsService
@@ -130,6 +136,7 @@ public final class DecisionCoordinator {
     public func cancel() {
         task?.cancel()
         task = nil
+        endBackgroundTaskIfNeeded()
     }
 
     private func reset() {
@@ -146,10 +153,52 @@ public final class DecisionCoordinator {
 
     private func run() {
         task?.cancel()
+        beginBackgroundTaskIfNeeded()
         task = Task { [weak self] in
             await self?.performAnalysis()
+            self?.endBackgroundTaskIfNeeded()
         }
     }
+
+    // MARK: - Background execution
+    //
+    // Without this, backgrounding the app mid-analysis (switching apps while
+    // waiting for an answer) gets the request suspended with nothing ever
+    // delivered -- there was no background-task assertion of any kind before
+    // this. This buys the OS-granted background execution window (device- and
+    // OS-version-dependent, historically on the order of 30s) so a request
+    // that was almost done when the user left can still finish and be shown
+    // when they come back. It does not guarantee survival for a request still
+    // running well past that window -- that would need the request itself on
+    // a background URLSession (a bigger change: background sessions only
+    // support upload/download tasks, not an in-memory request/response call
+    // like this one, and need an app-level completion handler to resume even
+    // after full suspension).
+
+    #if canImport(UIKit)
+    private func beginBackgroundTaskIfNeeded() {
+        guard backgroundTaskID == .invalid else { return }
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "DecisionAnalysis") { [weak self] in
+            // The expiration handler's own isolation isn't guaranteed, so hop onto
+            // the MainActor explicitly rather than touching MainActor-isolated
+            // state directly from it.
+            Task { @MainActor [weak self] in
+                // The OS is about to suspend us: stop cleanly rather than being killed mid-request.
+                self?.task?.cancel()
+                self?.endBackgroundTaskIfNeeded()
+            }
+        }
+    }
+
+    private func endBackgroundTaskIfNeeded() {
+        guard backgroundTaskID != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+        backgroundTaskID = .invalid
+    }
+    #else
+    private func beginBackgroundTaskIfNeeded() {}
+    private func endBackgroundTaskIfNeeded() {}
+    #endif
 
     private func performAnalysis() async {
         guard let classification, let budget else { return }
