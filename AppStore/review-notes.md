@@ -30,8 +30,9 @@ is reachable at any time from Profile > Your plan > See Pro, and Restore Purchas
 is on both the paywall and the Profile tab. The first decision is never blocked.
 
 AI AND DATA
-The text of the decision is sent to our own endpoint, which forwards it to
-Google's Gemini API for analysis. No account, device identifier or contact information is
+The text of the decision is sent to our own endpoint, which sends it to Groq
+for analysis and, when research is needed, to Google's Gemini API to look up
+relevant information. No account, device identifier or contact information is
 attached. Decisions, learned preferences and outcomes are stored on the device
 and can be deleted individually or all at once from Profile > Your data.
 
@@ -53,7 +54,7 @@ previously saved decisions.
 | 2.1 — Restore Purchases missing | Present on the paywall and in Profile. |
 | 5.1.1 — data collection beyond need | No account, no analytics provider shipped, no identifiers. |
 | 5.1.1(v) — account deletion | No account exists, so no deletion flow is required; all local data can still be deleted in app. |
-| 5.1.2 — third-party data sharing | The AI provider is declared in App Privacy and named in the privacy policy. |
+| 5.1.2 — third-party data sharing | Both AI providers (Groq, Gemini) are declared in App Privacy and named in the privacy policy. |
 | 2.3.1 — hidden features | No debug or test-only behaviour in the release configuration. |
 | 2.3.7 — misleading metadata | No accuracy or guarantee claims anywhere in the listing. |
 | 4.2 — minimum functionality | The app performs real analysis, keeps history, and works offline for saved decisions. |
