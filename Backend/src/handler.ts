@@ -49,7 +49,18 @@ function getClient(): GoogleGenAI {
   if (!cachedClient) {
     // The credential lives here and only here. It is read from the environment
     // and never echoed into a response or a log line.
-    cachedClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    cachedClient = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+      // Confirmed live: the SDK's default retry policy (up to 5 attempts, up
+      // to 60s between them) silently eats the whole request on a 429 or 5xx
+      // -- indistinguishable from the app just hanging, and long enough on
+      // its own to blow Vercel's 60s ceiling even for a "simple" decision.
+      // Fail fast instead: a real rate limit or transient error surfaces
+      // immediately as a normal thrown error (already handled below --
+      // rate_limited_upstream / upstream_unavailable), which is a much
+      // better experience than a minute of silence before a generic timeout.
+      httpOptions: { retryOptions: { attempts: 1 } },
+    });
   }
   return cachedClient;
 }

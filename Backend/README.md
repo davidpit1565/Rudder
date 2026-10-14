@@ -326,17 +326,24 @@ never the server granting free unmetered access.
 
 ## Cost
 
-Model choice is the primary lever, split on the Free/Pro boundary: simple and
-medium decisions run on the lighter model, a complex decision is the one that
-needs the stronger one. Effort (`thinking_level`) and the token/search budget
-are the secondary lever within whichever model a request gets. The map lives
-in `src/budget.ts`:
+Effort (`thinking_level`) and the token/search budget are the lever between
+complexities; the map lives in `src/budget.ts`:
 
 | Complexity | Model | Effort | Searches | Max tokens |
 |---|---|---|---|---|
 | simple | gemini-3.5-flash-lite | low | 0 | 16,000 |
 | medium | gemini-3.5-flash-lite | medium | up to 2 | 16,000 |
-| complex | gemini-3.8-flash | medium | up to 2 | 16,000 |
+| complex | gemini-3.5-flash-lite | medium | up to 2 | 16,000 |
+
+Every complexity runs on the same model for now. `PREMIUM_MODEL`
+(`gemini-3.8-flash`) exists in budget.ts but is unused by design, not
+forgotten: confirmed live, three times, that a single call on it -- at the
+lowest effort, with zero research -- still didn't complete within Vercel's
+60s function-duration ceiling. Bring it back for "complex" once that ceiling
+is raised (a paid Vercel plan lifts it to 300s) or the model proves reliably
+faster. The Free/Pro boundary is unaffected either way -- a "complex"
+decision is still the one gated behind Pro or the trial (`src/quota.ts`), it
+just isn't backed by a stronger model at the moment.
 
 Both models are on Gemini's free tier today (see `.env.example`) -- no
 per-token credit balance to run out, only rate limits that return a 429 and

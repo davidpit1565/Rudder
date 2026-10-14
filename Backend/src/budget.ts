@@ -3,15 +3,19 @@ import type { AnalysisRequest } from "./schema.js";
 /**
  * What one decision is allowed to spend.
  *
- * Model choice is the primary lever, split exactly on the Free/Pro boundary
- * the app already enforces: a complex ("deep") decision is the one that needs
- * Pro or the trial, so it's the only one that runs on the stronger model.
- * Simple and medium decisions are free and unlimited for everyone, and run on
- * the lighter model. Both models are on Gemini's free tier (see
- * Backend/README.md) -- no per-token credit balance that can silently run
- * out, only rate limits that fail loud and recover on their own. Effort
- * (thinking_level, output tokens, searches) is still the secondary lever
- * within whichever model a request gets.
+ * PREMIUM_MODEL is currently unused by design, not forgotten: confirmed live,
+ * three times in a row, that a single analysis call on it -- at the lowest
+ * thinking level, with zero research -- still failed to complete within
+ * Vercel's 60s function-duration ceiling (two 504s, one upstream 503 after
+ * the model itself took 35-47s). Every complexity runs on STANDARD_MODEL for
+ * now. The Free/Pro boundary is still enforced exactly as before -- a
+ * complex ("deep") decision is still the one that needs Pro or the trial --
+ * it just isn't backed by a stronger model at the moment. Bring PREMIUM_MODEL
+ * back for "complex" once Vercel's ceiling is raised (a paid plan lifts it to
+ * 300s) or the model proves reliably faster; see AppStore/RELEASE.md. Both
+ * models are on Gemini's free tier (see Backend/README.md) -- no per-token
+ * credit balance that can silently run out, only rate limits that fail loud
+ * and recover on their own.
  */
 export const PREMIUM_MODEL = "gemini-3.8-flash";
 export const STANDARD_MODEL = "gemini-3.5-flash-lite";
@@ -29,15 +33,7 @@ export interface Budget {
 }
 
 export function budgetFor(request: AnalysisRequest): Budget {
-  // A complex decision runs two sequential model calls (research, then
-  // analysis) on the stronger model, and still has to clear Vercel's 60s
-  // function-duration ceiling. Confirmed live: the stronger model alone, at
-  // "medium" thinking and zero research, already took 52s for one call --
-  // adding a research call on top blew past 60s outright. Kept at "low" (the
-  // same as "simple") so the premium model remains the one real
-  // differentiator for a complex decision, not deeper thinking it can't
-  // afford the time for. Re-measure before raising this; see AppStore/RELEASE.md.
-  const effort: Effort = request.complexity === "medium" ? "medium" : "low";
+  const effort: Effort = request.complexity === "simple" ? "low" : "medium";
 
   // On Gemini, max_output_tokens is a hard cap that includes thinking tokens,
   // not just the visible answer -- a budget sized for the previous provider's
@@ -55,7 +51,7 @@ export function budgetFor(request: AnalysisRequest): Budget {
     Math.min(request.questionCeiling - request.questionsAlreadyAsked, 5)
   );
 
-  const model = request.complexity === "complex" ? PREMIUM_MODEL : STANDARD_MODEL;
+  const model = STANDARD_MODEL;
 
   return { model, effort, maxTokens, maxSearches, questionsRemaining };
 }
