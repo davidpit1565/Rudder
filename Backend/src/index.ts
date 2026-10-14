@@ -50,6 +50,9 @@ server.listen(port, () => {
   if (!process.env.GEMINI_API_KEY) {
     console.warn("GEMINI_API_KEY is not set — analysis requests will fail.");
   }
+  if (!process.env.GROQ_API_KEY) {
+    console.warn("GROQ_API_KEY is not set — \"complex\" decisions will fail.");
+  }
   if (hasNoClientVerification()) {
     // Not a guess: with neither set, verifyClient() lets every request through,
     // so this is the one moment an operator who skipped the README will see it.

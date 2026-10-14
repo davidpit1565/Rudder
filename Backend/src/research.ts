@@ -32,7 +32,7 @@ export async function runResearch(
   if (budget.maxSearches === 0) return null;
 
   const interaction = await client.interactions.create({
-    model: budget.model,
+    model: budget.researchModel,
     input: buildResearchPrompt(request, budget),
     system_instruction: SYSTEM_PROMPT,
     generation_config: {
