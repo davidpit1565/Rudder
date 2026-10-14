@@ -21,8 +21,14 @@ Store Connect propagates without a build. Starting point:
 
 | Plan | Price |
 |---|---|
-| Monthly | €8.99 |
-| Annual | €49.99 |
+| Monthly | $8.99 |
+| Annual | $49.99 |
+
+Set as the **base/starting price in App Store Connect, in USD** — the app's only
+localization is en-US and its primary market is the US App Store, so the price
+that should be exact is the USD one; every other currency (including EUR) is
+then derived automatically from Apple's own price-tier table, which produces a
+clean, rounded number per currency regardless of which one is the base.
 
 That is roughly 54% off the monthly rate over a year — the paywall shows whatever
 the real numbers work out to, so it can never overstate the saving.
