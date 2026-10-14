@@ -30,12 +30,14 @@ export interface Budget {
 
 export function budgetFor(request: AnalysisRequest): Budget {
   // A complex decision runs two sequential model calls (research, then
-  // analysis) on the stronger model. Kept at the same operational budget as
-  // "medium" -- carried over from when this ran on a per-token-billed
-  // provider and had to stay well clear of Vercel's 60s function-duration
-  // ceiling. Re-measure against Gemini before raising these: the ceiling
-  // itself hasn't moved, only the provider has. See AppStore/RELEASE.md.
-  const effort: Effort = request.complexity === "simple" ? "low" : "medium";
+  // analysis) on the stronger model, and still has to clear Vercel's 60s
+  // function-duration ceiling. Confirmed live: the stronger model alone, at
+  // "medium" thinking and zero research, already took 52s for one call --
+  // adding a research call on top blew past 60s outright. Kept at "low" (the
+  // same as "simple") so the premium model remains the one real
+  // differentiator for a complex decision, not deeper thinking it can't
+  // afford the time for. Re-measure before raising this; see AppStore/RELEASE.md.
+  const effort: Effort = request.complexity === "medium" ? "medium" : "low";
 
   // On Gemini, max_output_tokens is a hard cap that includes thinking tokens,
   // not just the visible answer -- a budget sized for the previous provider's
