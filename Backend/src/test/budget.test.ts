@@ -33,7 +33,7 @@ test("a complex decision runs on the premium model, within the same operational 
   );
   assert.equal(budget.effort, "medium");
   assert.equal(budget.maxSearches, 2);
-  assert.equal(budget.maxTokens, 8000);
+  assert.equal(budget.maxTokens, 16000);
   assert.equal(budget.questionsRemaining, 5);
   assert.equal(budget.model, PREMIUM_MODEL);
 });
@@ -63,7 +63,7 @@ test("every budget stays inside its ceiling", () => {
       );
       assert.ok(budget.maxSearches <= 2);
       assert.ok(budget.questionsRemaining <= 5);
-      assert.ok(budget.maxTokens <= 8000);
+      assert.ok(budget.maxTokens <= 16000);
     }
   }
 });

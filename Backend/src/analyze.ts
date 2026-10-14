@@ -84,6 +84,16 @@ export async function analyse(client: GoogleGenAI, request: AnalysisRequest): Pr
   try {
     rawOutput = JSON.parse(extractJsonObject(text));
   } catch {
+    // Diagnostic only -- status and token counts, never the decision content
+    // itself. `max_output_tokens` is a hard cap that includes thinking
+    // tokens on Gemini, unlike the previous provider, so a budget that looks
+    // generous can still starve the actual JSON text; this is what would show it.
+    console.error("Gemini response was not valid JSON", {
+      status: interaction.status,
+      textLength: text.length,
+      totalOutputTokens: interaction.usage?.total_output_tokens,
+      totalThoughtTokens: interaction.usage?.total_thought_tokens,
+    });
     throw new AnalysisError("unparseable_response", 502);
   }
 
@@ -92,6 +102,10 @@ export async function analyse(client: GoogleGenAI, request: AnalysisRequest): Pr
   // the only real enforcement of the contract before anything reaches the app.
   const parsed = DecisionResponseSchema.safeParse(rawOutput);
   if (!parsed.success) {
+    console.error("Gemini response was valid JSON but failed the contract", {
+      status: interaction.status,
+      issues: parsed.error.issues.slice(0, 5).map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+    });
     throw new AnalysisError("unparseable_response", 502);
   }
 

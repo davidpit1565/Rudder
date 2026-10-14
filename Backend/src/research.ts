@@ -37,7 +37,10 @@ export async function runResearch(
     system_instruction: SYSTEM_PROMPT,
     generation_config: {
       thinking_level: budget.effort,
-      max_output_tokens: 4000,
+      // Doubled from the first cut at this: max_output_tokens is a hard cap
+      // that includes thinking tokens on Gemini, so a tight budget here risks
+      // starving the actual research notes, not just capping their length.
+      max_output_tokens: 8000,
     },
     tools: [{ type: "google_search" }],
   });
