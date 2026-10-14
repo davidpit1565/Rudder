@@ -29,8 +29,14 @@ export interface AnalysisClients {
  * from a crash. That is a different failure than the retry storm: it can
  * happen on the first and only attempt. Bounding each call explicitly turns
  * it into a normal, fast, JSON `upstream_unavailable` instead.
+ *
+ * Raised from 50s to 52s, alongside trimming RESEARCH_TIMEOUT_MS in
+ * research.ts: confirmed live that "complex" (now "high" effort, see
+ * budget.ts) with deep research consistently needed more of this budget than
+ * 50s/20s left for the analysis call, and was cut off by this deadline on
+ * every attempt. Still 8s of real margin under Vercel's ceiling.
  */
-const PIPELINE_DEADLINE_MS = 50_000;
+const PIPELINE_DEADLINE_MS = 52_000;
 
 /**
  * The whole pipeline for one decision: research what can be researched, then
