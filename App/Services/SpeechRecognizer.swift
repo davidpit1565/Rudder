@@ -36,12 +36,16 @@ final class SpeechRecognizer {
     private let recognizer = SFSpeechRecognizer(locale: Locale.current)
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
+    /// Set once per `start()` call, the first time the on-device attempt fails
+    /// outright -- guards the one-shot fallback below from retrying forever.
+    private var hasFallenBackToServerBasedRecognition = false
 
     /// Starts listening. `onTranscript` is called on the main actor with the
     /// best transcription so far every time it updates -- there is no fixed
     /// duration, the caller decides when enough is enough via `stop()`.
     func start(onTranscript: @escaping @MainActor (String) -> Void) {
         errorMessage = nil
+        hasFallenBackToServerBasedRecognition = false
         guard let recognizer, recognizer.isAvailable else {
             errorMessage = Failure.notAvailable.localizedDescription
             return
@@ -55,7 +59,7 @@ final class SpeechRecognizer {
                 return
             }
             do {
-                try beginRecording(recognizer: recognizer, onTranscript: onTranscript)
+                try beginRecording(recognizer: recognizer, onTranscript: onTranscript, forceServerBased: false)
             } catch {
                 errorMessage = Failure.couldNotStart.localizedDescription
             }
@@ -92,7 +96,8 @@ final class SpeechRecognizer {
 
     private func beginRecording(
         recognizer: SFSpeechRecognizer,
-        onTranscript: @escaping @MainActor (String) -> Void
+        onTranscript: @escaping @MainActor (String) -> Void,
+        forceServerBased: Bool
     ) throws {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.record, mode: .measurement, options: .duckOthers)
@@ -101,8 +106,14 @@ final class SpeechRecognizer {
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         // Stays on-device when the platform supports it for this locale -- no
-        // audio leaves the phone just to fill a text field.
-        request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
+        // audio leaves the phone just to fill a text field. But
+        // `supportsOnDeviceRecognition` only reports whether the *capability*
+        // exists for this locale, not whether its language data is actually
+        // downloaded -- a less common on-device locale (confirmed: Hebrew)
+        // reliably fails outright (error 1101) when it isn't, with nothing the
+        // user did wrong and no on-device fallback of its own. The one-shot
+        // retry below (`forceServerBased`) is what actually recovers that case.
+        request.requiresOnDeviceRecognition = forceServerBased ? false : recognizer.supportsOnDeviceRecognition
         self.request = request
 
         let inputNode = audioEngine.inputNode
@@ -119,6 +130,7 @@ final class SpeechRecognizer {
         // callback, not guaranteed to land on the main actor -- pull only the
         // Sendable values out of `result` here, then hop with those, rather than
         // carrying the (non-Sendable) result object or `self` across untracked.
+        let wasOnDevice = request.requiresOnDeviceRecognition
         task = recognizer.recognitionTask(with: request) { [weak self] result, error in
             let transcript = result?.bestTranscription.formattedString
             let isFinal = result?.isFinal ?? false
@@ -127,6 +139,21 @@ final class SpeechRecognizer {
                 guard let self else { return }
                 if let transcript {
                     onTranscript(transcript)
+                }
+                if failed, wasOnDevice, !self.hasFallenBackToServerBasedRecognition,
+                   transcript == nil || transcript?.isEmpty == true {
+                    // The on-device attempt never produced anything before
+                    // failing -- most likely its language data isn't
+                    // downloaded. Retry once over the network rather than
+                    // leaving voice input dead for this locale.
+                    self.hasFallenBackToServerBasedRecognition = true
+                    self.stop()
+                    do {
+                        try self.beginRecording(recognizer: recognizer, onTranscript: onTranscript, forceServerBased: true)
+                    } catch {
+                        self.errorMessage = Failure.couldNotStart.localizedDescription
+                    }
+                    return
                 }
                 if failed {
                     self.errorMessage = Failure.recognitionFailed.localizedDescription
