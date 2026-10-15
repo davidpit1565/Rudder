@@ -38,6 +38,7 @@ final class PersistenceService {
             StoredDecision.self,
             StoredDecisionResult.self,
             StoredOutcome.self,
+            StoredFollowUpExchange.self,
             StoredMemoryEntry.self,
             StoredDeclinedMemoryKey.self
         ])
@@ -128,6 +129,44 @@ final class PersistenceService {
         try context.delete(model: StoredDecision.self)
         try context.delete(model: StoredDecisionResult.self)
         try context.delete(model: StoredOutcome.self)
+        try context.delete(model: StoredFollowUpExchange.self)
+        try context.save()
+    }
+
+    // MARK: - Follow-up
+
+    func followUpExchanges(for decisionID: UUID) throws -> [FollowUpExchange] {
+        guard let stored = try storedDecision(id: decisionID) else { return [] }
+        return stored.followUpExchanges
+            .sorted { $0.askedAt < $1.askedAt }
+            .map { $0.toDomain() }
+    }
+
+    func addFollowUpExchange(_ exchange: FollowUpExchange, to decisionID: UUID) throws {
+        let context = try requireContext()
+        guard let stored = try storedDecision(id: decisionID) else { return }
+        let new = StoredFollowUpExchange(
+            id: exchange.id,
+            question: exchange.question,
+            answer: exchange.answer,
+            askedAt: exchange.askedAt,
+            suggestedNewDecisionPrompt: exchange.suggestedNewDecisionPrompt,
+            durablePreferenceStatement: exchange.durablePreferenceStatement
+        )
+        new.decision = stored
+        stored.followUpExchanges.append(new)
+        context.insert(new)
+        try context.save()
+    }
+
+    /// Clears the pending consent prompt on one exchange, whether the user
+    /// said yes or no -- either way, it must never be shown again. Whether a
+    /// MemoryEntry was actually written is the caller's own decision.
+    func clearFollowUpDurablePreference(exchangeID: UUID) throws {
+        let context = try requireContext()
+        let descriptor = FetchDescriptor<StoredFollowUpExchange>(predicate: #Predicate { $0.id == exchangeID })
+        guard let exchange = try context.fetch(descriptor).first else { return }
+        exchange.durablePreferenceStatement = nil
         try context.save()
     }
 
@@ -246,6 +285,7 @@ final class PersistenceService {
         try context.delete(model: StoredMemoryEntry.self)
         try context.delete(model: StoredDeclinedMemoryKey.self)
         try context.delete(model: StoredOutcome.self)
+        try context.delete(model: StoredFollowUpExchange.self)
         try context.delete(model: StoredDecisionResult.self)
         try context.delete(model: StoredDecision.self)
         try context.save()

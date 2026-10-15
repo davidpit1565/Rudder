@@ -164,3 +164,46 @@ export interface WireResponse extends Omit<DecisionResponse, "options"> {
     failedConstraints: string[];
   }>;
 }
+
+// --- Follow-up (chat on a finished decision) ----------------------------------
+//
+// Deliberately separate from AnalysisRequestSchema/DecisionResponseSchema above:
+// a follow-up is a short, cheap, no-research Groq call that answers a question
+// about a decision already finished, not a new full analysis. It mirrors
+// `FollowUpResponse` in Packages/RudderKit/Sources/RudderCore/AI/
+// FollowUpContract.swift.
+
+export const FollowUpRequestSchema = z.object({
+  schemaVersion: z.literal(SCHEMA_VERSION),
+  /** The original decision's prompt, for grounding -- the model never re-derives it. */
+  originalPrompt: z.string().min(3).max(4000),
+  /** A compact, app-rendered summary of the finished decision (restatement,
+   * recommendation, reasons, tradeoffs) -- not the full DecisionResult, which
+   * would cost far more tokens than a short follow-up answer needs. */
+  decisionContext: z.string().max(3000),
+  /** Prior exchanges in this same follow-up thread, oldest first, so a second
+   * or third question still has the earlier answers for continuity. */
+  history: z.array(
+    z.object({
+      question: z.string().max(1000),
+      answer: z.string().max(2000),
+    })
+  ).max(10).default([]),
+  question: z.string().min(3).max(1000),
+  locale: z.string().max(40).default("en_US"),
+});
+
+export type FollowUpRequest = z.infer<typeof FollowUpRequestSchema>;
+
+export const FollowUpResponseSchema = z.object({
+  answer: z.string().max(2000).describe("A direct, conversational answer grounded only in the decision context and history given -- never invented facts."),
+  needsResearch: z.boolean()
+    .describe("True only when answering well would require looking up current, external facts this call cannot verify -- not for anything answerable from the existing decision context."),
+  suggestedNewDecisionPrompt: z.string().max(2000).nullable()
+    .describe("When needsResearch is true, or the question is really a different decision, a ready-to-use prompt (including relevant context from the original decision) for starting a new decision. Otherwise null."),
+  durablePreference: z.object({
+    statement: z.string().max(200).describe("A short, behavioural, user-facing sentence, e.g. 'You prioritize flexibility over price.' Never an identity claim."),
+  }).nullable().describe("Set only when this answer revealed a preference worth remembering for future decisions. Most answers set this to null."),
+});
+
+export type FollowUpResponse = z.infer<typeof FollowUpResponseSchema>;

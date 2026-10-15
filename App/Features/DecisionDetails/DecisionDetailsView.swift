@@ -23,6 +23,9 @@ struct DecisionDetailsView: View {
                 summary
                 whatYouToldMe
                 outcomeSection
+                FollowUpSection(record: current) { prompt in
+                    newDecision = ActiveDecision(prompt: prompt)
+                }
 
                 // A plain Button driving `.navigationDestination(isPresented:)`,
                 // not a NavigationLink -- see the identical row in

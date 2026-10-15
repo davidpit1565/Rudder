@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		01C8333A1D286D6376E50EB3 /* RudderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01E2A801CA49EBAF38EDF27D /* RudderApp.swift */; };
 		05DAE1340417E6FDA83F18D6 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE8350CF53FE2FF0F11A9AF5 /* AnalysisView.swift */; };
+		387455A4ED8E69341ED1B360 /* FollowUpSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 650DF82633C21DC8560D8BBC /* FollowUpSection.swift */; };
 		076C27D9F28624B3A990B993 /* EndToEndTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4847B014C5DB973D36FF669 /* EndToEndTests.swift */; };
 		0D7572244D9A0DA3229A265E /* RudderCore in Frameworks */ = {isa = PBXBuildFile; productRef = B8A64398D7992C0CE5EC0A3F /* RudderCore */; };
 		1206040E30E1A808B9F002FD /* RudderShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 987339EC52A0C5B250644522 /* RudderShortcuts.swift */; };
@@ -121,6 +122,7 @@
 		F112DAB7643C06571B0F5DC0 /* PersistenceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceService.swift; sourceTree = "<group>"; };
 		FC9987B51A64B70B271C1709 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		FE8350CF53FE2FF0F11A9AF5 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
+		650DF82633C21DC8560D8BBC /* FollowUpSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FollowUpSection.swift; sourceTree = "<group>"; };
 		8EF615D4E784D67273CF4099 /* StagedWorkingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StagedWorkingView.swift; sourceTree = "<group>"; };
 		4AB0001DEA733A6DC39E5EC4 /* StagedProgressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StagedProgressTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -161,6 +163,7 @@
 			children = (
 				FE8350CF53FE2FF0F11A9AF5 /* AnalysisView.swift */,
 				2EDDDF5A02C9F0F452BE9277 /* DecisionDetailsView.swift */,
+				650DF82633C21DC8560D8BBC /* FollowUpSection.swift */,
 			);
 			path = DecisionDetails;
 			sourceTree = "<group>";
@@ -534,6 +537,7 @@
 				75CCF1272437CE7BD5752D44 /* AppEnvironment.swift in Sources */,
 				63FA111DDFEFCD744E7DCE7F /* DecisionDetailsView.swift in Sources */,
 				DAE01BFE94A84AF84F8F33C8 /* DecisionFlowView.swift in Sources */,
+				387455A4ED8E69341ED1B360 /* FollowUpSection.swift in Sources */,
 				F30E2914E5BE8BCD0B8C046B /* StagedWorkingView.swift in Sources */,
 				9306A4115F934433A11BFBD1 /* DecisionsView.swift in Sources */,
 				85C05B353439F5665FB51B5B /* HomeView.swift in Sources */,

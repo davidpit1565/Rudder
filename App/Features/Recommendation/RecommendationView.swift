@@ -116,10 +116,14 @@ struct RecommendationView: View {
     private func recommendation(for option: DecisionOption) -> some View {
         VStack(alignment: .leading, spacing: RudderSpacing.l) {
             VStack(alignment: .leading, spacing: RudderSpacing.xs) {
-                Text("MY RECOMMENDATION")
-                    .font(RudderFont.monoLabel)
-                    .foregroundStyle(RudderColor.tertiaryText)
-                    .accessibilityHidden(true)
+                HStack {
+                    Text("MY RECOMMENDATION")
+                        .font(RudderFont.monoLabel)
+                        .foregroundStyle(RudderColor.tertiaryText)
+                        .accessibilityHidden(true)
+                    Spacer()
+                    TierTag(complexity: result.complexity)
+                }
                 Text(option.name)
                     .font(RudderFont.display)
                     .foregroundStyle(RudderColor.primaryText)

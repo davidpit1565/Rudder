@@ -184,6 +184,18 @@ export const DEFAULT_FREE_MEDIUM_DAILY_LIMIT = 5;
 export const DEFAULT_PRO_MEDIUM_DAILY_LIMIT = 15;
 export const DEFAULT_PRO_COMPLEX_DAILY_LIMIT = 5;
 
+/**
+ * A follow-up question on an already-finished decision is its own bucket,
+ * separate from the decision-creation buckets above -- a user re-reading
+ * their recommendation and asking "what about X" should not eat into the
+ * same allowance as starting a brand new decision. Kept conservative (10 for
+ * Pro, not 15 like medium) as a deliberate starting point: easy to raise
+ * later if real usage calls for it, hard to walk back down without
+ * frustrating users already used to a higher number.
+ */
+export const DEFAULT_FREE_FOLLOWUP_DAILY_LIMIT = 3;
+export const DEFAULT_PRO_FOLLOWUP_DAILY_LIMIT = 10;
+
 interface DailyCounter {
   count: number;
   dayKey: string;

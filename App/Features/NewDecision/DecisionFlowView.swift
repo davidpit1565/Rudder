@@ -7,6 +7,9 @@ import RudderFlow
 /// genuinely doing — there is no scripted sequence of animations.
 struct DecisionFlowView: View {
     let prompt: String
+    /// Set only from Home's "Options" disclosure -- nil (the default) is the
+    /// untouched, auto-classified path every other call site still uses.
+    var complexityOverride: DecisionComplexity? = nil
 
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
@@ -38,7 +41,7 @@ struct DecisionFlowView: View {
             guard coordinator == nil else { return }
             let new = environment.makeCoordinator()
             coordinator = new
-            new.start(prompt: prompt)
+            new.start(prompt: prompt, complexityOverride: complexityOverride)
         }
         // Asked once, after a decision is saved, and only ever with a yes/no.
         .sheet(isPresented: $showingMemoryConsent) {
@@ -65,8 +68,13 @@ struct DecisionFlowView: View {
             ProgressView()
 
         case .working(let state):
-            WorkingScreen(state: state, researchLevel: coordinator.activeResearchLevel, preliminary: coordinator.preliminary)
-                .id(state)
+            WorkingScreen(
+                state: state,
+                researchLevel: coordinator.activeResearchLevel,
+                preliminary: coordinator.preliminary,
+                complexity: coordinator.complexity
+            )
+            .id(state)
 
         case .asking(let question):
             QuestionScreen(
@@ -114,10 +122,14 @@ private struct WorkingScreen: View {
     let state: DecisionFlowState
     let researchLevel: ResearchLevel?
     let preliminary: PreliminaryDirection?
+    let complexity: DecisionComplexity?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RudderSpacing.l) {
+                if let complexity {
+                    TierTag(complexity: complexity)
+                }
                 // `.understanding` is the one call most decisions ever make, and
                 // the one genuinely worth breaking into stages -- see
                 // StagedWorkingView's doc comment for what it can and can't know.

@@ -223,6 +223,94 @@ final class AppEnvironment {
         }
     }
 
+    // MARK: - Follow-up
+
+    private func followUpService() -> FollowUpService {
+        #if DEBUG
+        if let scripted = UITestHarness.followUpService() { return scripted }
+        #endif
+        return RemoteFollowUpService(
+            configuration: configuration,
+            installId: InstallIdentity.current,
+            proTransactionProvider: { [subscriptions] in await subscriptions.currentTransactionJWS() }
+        )
+    }
+
+    func followUpExchanges(for record: DecisionRecord) -> [FollowUpExchange] {
+        (try? persistence.followUpExchanges(for: record.id)) ?? []
+    }
+
+    /// Renders a finished decision down to the compact context a follow-up
+    /// call needs -- not the full DecisionResult, which would cost far more
+    /// tokens than a short follow-up answer needs.
+    private func followUpContext(for record: DecisionRecord) -> String {
+        var parts: [String] = [record.result.understanding.restatement]
+
+        if let recommended = record.result.recommendedOption {
+            parts.append("Recommended: \(recommended.name). \(record.result.headline)")
+            for reason in record.result.reasons {
+                parts.append("- \(reason.title): \(reason.detail)")
+            }
+        }
+        if let chosen = record.chosenOption, chosen.id != record.result.recommendedOptionID {
+            parts.append("The user actually chose: \(chosen.name).")
+        }
+        for tradeOff in record.result.tradeOffs {
+            parts.append("Trade-off: gained \(tradeOff.gaining), gave up \(tradeOff.givingUp).")
+        }
+        return parts.joined(separator: "\n")
+    }
+
+    /// Asks a follow-up question about an already-finished decision and
+    /// persists the exchange on success, so it survives app restarts.
+    /// Throws rather than returning nil on failure, same as a new decision's
+    /// own analysis -- the caller shows what actually went wrong.
+    func askFollowUp(_ question: String, about record: DecisionRecord) async throws -> FollowUpExchange {
+        let history = followUpExchanges(for: record).map {
+            FollowUpRequest.Exchange(question: $0.question, answer: $0.answer)
+        }
+        let request = FollowUpRequest(
+            originalPrompt: record.prompt,
+            decisionContext: followUpContext(for: record),
+            history: history,
+            question: question
+        )
+        let result = try await followUpService().answer(request)
+        let exchange = FollowUpExchange(
+            question: question,
+            answer: result.response.answer,
+            suggestedNewDecisionPrompt: result.response.needsResearch ? result.response.suggestedNewDecisionPrompt : nil,
+            durablePreferenceStatement: result.response.durablePreference?.statement
+        )
+        try? persistence.addFollowUpExchange(exchange, to: record.id)
+        analytics.track(.followUpAsked)
+        return exchange
+    }
+
+    /// Consent-gated, same principle as `acceptPendingMemory`: a preference a
+    /// follow-up revealed is never written automatically. Unlike that
+    /// statistical candidate, this has no repeated-pattern evidence behind it
+    /// -- it is accepted on the strength of one conversation, so it starts at
+    /// evidenceCount 1.
+    func acceptFollowUpPreference(_ statement: String, exchangeID: UUID) {
+        do {
+            let entry = MemoryEntry(key: "followup:\(exchangeID.uuidString)", statement: statement, evidenceCount: 1)
+            try MemorySafety.validate(entry.statement)
+            try persistence.saveMemory(entry)
+            analytics.track(.memoryAccepted)
+        } catch {
+            // An unsafe or unstorable statement is dropped silently, same as
+            // acceptPendingMemory -- never worth bothering the user about.
+        }
+        try? persistence.clearFollowUpDurablePreference(exchangeID: exchangeID)
+        reload()
+    }
+
+    func declineFollowUpPreference(exchangeID: UUID) {
+        try? persistence.clearFollowUpDurablePreference(exchangeID: exchangeID)
+        reload()
+    }
+
     // MARK: - Data controls
 
     func deleteAllDecisions() {

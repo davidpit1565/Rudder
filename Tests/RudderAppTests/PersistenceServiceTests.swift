@@ -179,6 +179,69 @@ final class PersistenceServiceTests: XCTestCase {
         XCTAssertTrue(try service.allMemory().isEmpty)
     }
 
+    // MARK: - Follow-up
+
+    func testFollowUpExchangesComeBackOldestFirst() throws {
+        let service = try makeService()
+        let record = makeRecord()
+        try service.save(record)
+
+        let first = FollowUpExchange(question: "Why not the Pro?", answer: "Portability mattered more here.")
+        var second = FollowUpExchange(question: "What about battery life?", answer: "The Air lasts longer.")
+        second.askedAt = first.askedAt.addingTimeInterval(60)
+        try service.addFollowUpExchange(first, to: record.id)
+        try service.addFollowUpExchange(second, to: record.id)
+
+        let loaded = try service.followUpExchanges(for: record.id)
+        XCTAssertEqual(loaded.map(\.question), [first.question, second.question])
+    }
+
+    func testFollowUpExchangesAreDeletedWithTheirDecision() throws {
+        let service = try makeService()
+        let record = makeRecord()
+        try service.save(record)
+        try service.addFollowUpExchange(
+            FollowUpExchange(question: "Why not the Pro?", answer: "Portability mattered more here."),
+            to: record.id
+        )
+
+        try service.delete(decisionID: record.id)
+
+        XCTAssertTrue(try service.followUpExchanges(for: record.id).isEmpty)
+    }
+
+    func testClearingAFollowUpPreferenceRemovesOnlyThatFlag() throws {
+        let service = try makeService()
+        let record = makeRecord()
+        try service.save(record)
+        let exchange = FollowUpExchange(
+            question: "Why not the Pro?",
+            answer: "Portability mattered more here.",
+            durablePreferenceStatement: "You prioritize portability over raw performance."
+        )
+        try service.addFollowUpExchange(exchange, to: record.id)
+
+        try service.clearFollowUpDurablePreference(exchangeID: exchange.id)
+
+        let loaded = try XCTUnwrap(service.followUpExchanges(for: record.id).first)
+        XCTAssertNil(loaded.durablePreferenceStatement)
+        XCTAssertEqual(loaded.answer, exchange.answer, "Clearing the preference must not touch the rest of the exchange")
+    }
+
+    func testDeleteAllDecisionsAlsoRemovesFollowUpExchanges() throws {
+        let service = try makeService()
+        let record = makeRecord()
+        try service.save(record)
+        try service.addFollowUpExchange(
+            FollowUpExchange(question: "Why not the Pro?", answer: "Portability mattered more here."),
+            to: record.id
+        )
+
+        try service.deleteAllDecisions()
+
+        XCTAssertTrue(try service.followUpExchanges(for: record.id).isEmpty)
+    }
+
     func testAnUnavailableStoreThrowsInsteadOfCrashing() {
         // `best()` always returns something usable; the point here is that every
         // call path is throwing rather than trapping.

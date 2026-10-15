@@ -16,6 +16,7 @@ public enum AnalyticsEvent: String, Sendable {
     case subscriptionStarted = "subscription_started"
     case memoryProposed = "memory_proposed"
     case memoryAccepted = "memory_accepted"
+    case followUpAsked = "followup_asked"
 }
 
 /// Only these keys may accompany an event, and only with these value types.

@@ -65,6 +65,17 @@ export const DEFAULT_MONTHLY_FREE_SPEND_CEILING_USD = 12;
  */
 export const DEFAULT_MONTHLY_ABSOLUTE_SPEND_CEILING_USD = 5;
 
+/**
+ * A follow-up question is a single short, low-effort Groq call with no
+ * research -- a small fraction of even a "simple" decision's estimated cost
+ * above. Kept as its own flat constant rather than squeezed into
+ * ESTIMATED_COST_USD's per-complexity shape, since a follow-up has no
+ * complexity of its own. Still counted against both spend ceilings below:
+ * cheap is not the same as free, and the ceilings exist precisely so no
+ * individual cost assumption has to be re-litigated under load.
+ */
+export const FOLLOWUP_ESTIMATED_COST_USD = 0.005;
+
 export interface SpendCeilingDecision {
   allowed: boolean;
   spentUsd: number;

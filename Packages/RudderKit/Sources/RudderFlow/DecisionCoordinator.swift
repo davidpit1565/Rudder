@@ -73,6 +73,11 @@ public final class DecisionCoordinator {
         return false
     }
 
+    /// The tier this decision is actually running at -- auto-classified, or
+    /// the user's own manual override (see `start(prompt:complexityOverride:)`).
+    /// nil only before `start` has run.
+    public var complexity: DecisionComplexity? { classification?.complexity }
+
     public var result: DecisionResult? {
         switch phase {
         case .finished(let result): return result
@@ -83,7 +88,11 @@ public final class DecisionCoordinator {
 
     // MARK: - Running
 
-    public func start(prompt raw: String) {
+    /// `complexityOverride` lets the user pick a research depth themselves
+    /// (the "Options" disclosure on Home) instead of the on-device
+    /// auto-classification. nil (the default) is the untouched, auto path --
+    /// most decisions never set this.
+    public func start(prompt raw: String, complexityOverride: DecisionComplexity? = nil) {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 3 else { return }
 
@@ -91,7 +100,21 @@ public final class DecisionCoordinator {
         reset()
         prompt = trimmed
 
-        let classification = DecisionClassifier.classify(trimmed)
+        var classification = DecisionClassifier.classify(trimmed)
+        if let complexityOverride, complexityOverride != classification.complexity {
+            let researchLevel: ResearchLevel
+            switch complexityOverride {
+            case .simple: researchLevel = .none
+            case .medium: researchLevel = .light
+            case .complex: researchLevel = .deep
+            }
+            classification = DecisionClassifier.Classification(
+                category: classification.category,
+                complexity: complexityOverride,
+                researchLevel: researchLevel,
+                optionCountHint: classification.optionCountHint
+            )
+        }
         self.classification = classification
         budget = ResearchPolicy.budget(
             complexity: classification.complexity,
