@@ -167,6 +167,7 @@ struct ProfileView: View {
                                 // not a real constraint on normal use.
                                 usageRow(label: "Complex today", bucket: daily)
                             }
+                            usageRow(label: "Follow-up questions today", bucket: status.followup)
                         }
                     }
                 }

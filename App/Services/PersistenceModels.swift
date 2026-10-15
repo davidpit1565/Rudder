@@ -20,6 +20,9 @@ final class StoredDecision {
     @Relationship(deleteRule: .cascade, inverse: \StoredOutcome.decision)
     var outcome: StoredOutcome?
 
+    @Relationship(deleteRule: .cascade, inverse: \StoredFollowUpExchange.decision)
+    var followUpExchanges: [StoredFollowUpExchange] = []
+
     init(
         id: UUID = UUID(),
         title: String,
@@ -71,6 +74,36 @@ final class StoredOutcome {
         self.ratingRaw = ratingRaw
         self.note = note
         self.recordedAt = recordedAt
+    }
+}
+
+/// One question-and-answer pair in a follow-up conversation on an
+/// already-finished decision. Cascade-deleted with its decision -- a
+/// follow-up thread has no meaning once the decision it's about is gone.
+@Model
+final class StoredFollowUpExchange {
+    @Attribute(.unique) var id: UUID
+    var question: String
+    var answer: String
+    var askedAt: Date
+    var suggestedNewDecisionPrompt: String?
+    var durablePreferenceStatement: String?
+    var decision: StoredDecision?
+
+    init(
+        id: UUID = UUID(),
+        question: String,
+        answer: String,
+        askedAt: Date = Date(),
+        suggestedNewDecisionPrompt: String? = nil,
+        durablePreferenceStatement: String? = nil
+    ) {
+        self.id = id
+        self.question = question
+        self.answer = answer
+        self.askedAt = askedAt
+        self.suggestedNewDecisionPrompt = suggestedNewDecisionPrompt
+        self.durablePreferenceStatement = durablePreferenceStatement
     }
 }
 
@@ -146,6 +179,19 @@ extension StoredOutcome {
     func toDomain() -> Outcome? {
         guard let rating = Outcome.Rating(rawValue: ratingRaw) else { return nil }
         return Outcome(rating: rating, note: note, recordedAt: recordedAt)
+    }
+}
+
+extension StoredFollowUpExchange {
+    func toDomain() -> FollowUpExchange {
+        FollowUpExchange(
+            id: id,
+            question: question,
+            answer: answer,
+            askedAt: askedAt,
+            suggestedNewDecisionPrompt: suggestedNewDecisionPrompt,
+            durablePreferenceStatement: durablePreferenceStatement
+        )
     }
 }
 

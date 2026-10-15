@@ -6,7 +6,7 @@ import { resetConcurrency } from "../concurrency.js";
 import { resetDeepDecisionQuota, resetDailyQuota } from "../quota.js";
 import { resetGlobalFreeSpend, resetAbsoluteSpend } from "../spendCeiling.js";
 import { AnalysisRequestSchema, SCHEMA_VERSION } from "../schema.js";
-import type { WireResponse } from "../schema.js";
+import type { WireResponse, FollowUpResponse } from "../schema.js";
 import { buildJws, validPayload, withTestAppleRoot } from "./fixtures/appleTransaction.js";
 
 function verifiedProHeaders(): Record<string, string> {
@@ -53,6 +53,43 @@ function request(overrides: Partial<Parameters<typeof handle>[0]> = {}) {
     headers: {},
     body: validBody(),
     clientKey: `test-${Math.random()}`,
+    ...overrides,
+  };
+}
+
+/** A fake followUp() whose completion this test controls, mirroring
+ * controllableAnalyse() above. */
+function controllableFollowUp() {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const followUp = async (): Promise<FollowUpResponse> => {
+    await gate;
+    return { answer: "Stub answer.", needsResearch: false, suggestedNewDecisionPrompt: null, durablePreference: null };
+  };
+  return { followUp, release };
+}
+
+function validFollowUpBody(overrides: Record<string, unknown> = {}) {
+  return JSON.stringify({
+    schemaVersion: SCHEMA_VERSION,
+    originalPrompt: "MacBook Air or MacBook Pro for photo editing?",
+    decisionContext: "Recommended the MacBook Air for portability.",
+    history: [],
+    question: "What about exporting 4K video occasionally?",
+    locale: "en_GB",
+    ...overrides,
+  });
+}
+
+function followUpRequest(overrides: Partial<Parameters<typeof handle>[0]> = {}) {
+  return {
+    method: "POST",
+    path: "/v1/decisions/followup",
+    headers: {},
+    body: validFollowUpBody(),
+    clientKey: `test-followup-${Math.random()}`,
     ...overrides,
   };
 }
@@ -669,4 +706,173 @@ test("quota status never spends a unit of what it reports", async () => {
 
   resetDeepDecisionQuota();
   resetDailyQuota();
+});
+
+test("quota status also reports today's follow-up usage", async () => {
+  resetDailyQuota();
+
+  const headers = { "x-rudder-install-id": "status-followup" };
+  const status = await handle({ method: "GET", path: "/v1/quota/status", headers, body: "", clientKey: "status-followup-test" });
+  assert.equal(status.status, 200);
+  const body = JSON.parse(status.body);
+  assert.equal(body.followup.used, 0);
+  assert.ok(body.followup.limit > 0);
+
+  resetDailyQuota();
+});
+
+// --- POST /v1/decisions/followup ---
+
+test("a follow-up question is answered and reports its own quota bucket", async () => {
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+  resetConcurrency();
+  process.env.DECIDE_FREE_FOLLOWUP_DAILY_LIMIT = "3";
+  const { followUp, release } = controllableFollowUp();
+  release();
+
+  const headers = { "x-rudder-install-id": "followup-happy-path" };
+  const response = await handle(followUpRequest({ headers }), { followUp });
+  assert.equal(response.status, 200);
+  const body = JSON.parse(response.body);
+  assert.equal(body.answer, "Stub answer.");
+  assert.equal(body.quota.bucket, "followup-free");
+  assert.equal(body.quota.used, 1);
+  assert.equal(body.quota.limit, 3);
+
+  delete process.env.DECIDE_FREE_FOLLOWUP_DAILY_LIMIT;
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+});
+
+test("a follow-up request that does not match the contract is rejected", async () => {
+  const response = await handle(followUpRequest({ body: JSON.stringify({ question: "hi" }) }));
+  assert.equal(response.status, 400);
+  assert.equal(JSON.parse(response.body).error, "invalid_request");
+});
+
+test("an oversized follow-up payload is refused", async () => {
+  const response = await handle(followUpRequest({ body: "x".repeat(50_000) }));
+  assert.equal(response.status, 413);
+});
+
+test("a Free follow-up is capped per install per day, in its own bucket from decisions", async () => {
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+  resetConcurrency();
+  process.env.DECIDE_FREE_FOLLOWUP_DAILY_LIMIT = "2";
+  const { followUp, release } = controllableFollowUp();
+  release();
+
+  const headers = { "x-rudder-install-id": "followup-daily-free" };
+  for (let i = 1; i <= 2; i++) {
+    const response = await handle(followUpRequest({ headers }), { followUp });
+    assert.equal(response.status, 200, `follow-up ${i} of 2 should be allowed`);
+  }
+
+  const third = await handle(followUpRequest({ headers }), { followUp });
+  assert.equal(third.status, 429);
+  assert.equal(JSON.parse(third.body).error, "daily_followup_limit_reached");
+  assert.ok(Number(third.headers["Retry-After"]) > 0);
+
+  delete process.env.DECIDE_FREE_FOLLOWUP_DAILY_LIMIT;
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+});
+
+test("a verified Pro subscriber gets a higher daily follow-up limit, in its own bucket", async () => {
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+  resetConcurrency();
+  process.env.DECIDE_FREE_FOLLOWUP_DAILY_LIMIT = "1";
+  process.env.DECIDE_PRO_FOLLOWUP_DAILY_LIMIT = "2";
+  const { followUp, release } = controllableFollowUp();
+  release();
+
+  const headers = { "x-rudder-install-id": "followup-daily-pro", ...verifiedProHeaders() };
+  const first = await withTestAppleRoot(() => handle(followUpRequest({ headers }), { followUp }));
+  assert.equal(first.status, 200);
+  assert.equal(JSON.parse(first.body).quota.bucket, "followup-pro");
+
+  const second = await withTestAppleRoot(() => handle(followUpRequest({ headers }), { followUp }));
+  assert.equal(second.status, 200, "Pro's own limit of 2 allows a second follow-up today");
+
+  const third = await withTestAppleRoot(() => handle(followUpRequest({ headers }), { followUp }));
+  assert.equal(third.status, 429, "the third exceeds Pro's own limit of 2");
+
+  delete process.env.DECIDE_FREE_FOLLOWUP_DAILY_LIMIT;
+  delete process.env.DECIDE_PRO_FOLLOWUP_DAILY_LIMIT;
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+});
+
+test("two installs never share a follow-up quota bucket", async () => {
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+  resetConcurrency();
+  process.env.DECIDE_FREE_FOLLOWUP_DAILY_LIMIT = "1";
+  const { followUp, release } = controllableFollowUp();
+  release();
+
+  const blocked = await handle(followUpRequest({ headers: { "x-rudder-install-id": "followup-install-x" } }), { followUp });
+  assert.equal(blocked.status, 200);
+  const secondForX = await handle(followUpRequest({ headers: { "x-rudder-install-id": "followup-install-x" } }), { followUp });
+  assert.equal(secondForX.status, 429);
+
+  const otherInstall = await handle(followUpRequest({ headers: { "x-rudder-install-id": "followup-install-y" } }), { followUp });
+  assert.equal(otherInstall.status, 200, "a different install starts with its own fresh follow-up quota");
+
+  delete process.env.DECIDE_FREE_FOLLOWUP_DAILY_LIMIT;
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+});
+
+test("a failed follow-up refunds its quota instead of spending it for nothing", async () => {
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+  resetConcurrency();
+  process.env.DECIDE_FREE_FOLLOWUP_DAILY_LIMIT = "1";
+
+  const failing = async (): Promise<FollowUpResponse> => {
+    throw new Error("boom");
+  };
+  const headers = { "x-rudder-install-id": "followup-refund-install" };
+
+  for (let i = 0; i < 5; i++) {
+    const response = await handle(followUpRequest({ headers }), { followUp: failing });
+    assert.equal(response.status, 500, "every attempt fails, but none should exhaust the follow-up quota");
+  }
+
+  delete process.env.DECIDE_FREE_FOLLOWUP_DAILY_LIMIT;
+  resetDailyQuota();
+  resetGlobalFreeSpend();
+  resetAbsoluteSpend();
+});
+
+test("a global concurrency cap is shared between analyze and follow-up", async () => {
+  resetConcurrency();
+  process.env.DECIDE_MAX_CONCURRENT_ANALYSES = "1";
+
+  const { analyse, release: releaseAnalyse } = controllableAnalyse();
+  const first = handle(request({ clientKey: "shared-a" }), { analyse });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const { followUp } = controllableFollowUp();
+  const second = await handle(followUpRequest({ clientKey: "shared-b" }), { followUp });
+  assert.equal(second.status, 503, "a follow-up does not get a slot the analyze call is already holding");
+
+  releaseAnalyse();
+  await first;
+
+  delete process.env.DECIDE_MAX_CONCURRENT_ANALYSES;
+  resetConcurrency();
 });

@@ -31,6 +31,9 @@ public struct QuotaStatus: Decodable, Sendable, Equatable {
     public let isPro: Bool
     public let medium: QuotaBucketStatus
     public let complex: ComplexQuotaStatus
+    /// Today's follow-up usage -- its own bucket, separate from starting a new
+    /// decision (Backend/src/quota.ts).
+    public let followup: QuotaBucketStatus
 }
 
 public protocol QuotaStatusService: Sendable {

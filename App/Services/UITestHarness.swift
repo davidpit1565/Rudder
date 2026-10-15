@@ -52,6 +52,26 @@ enum UITestHarness {
         guard let scenario else { return nil }
         return ScriptedAnalysisService(scenario: scenario)
     }
+
+    /// Same reasoning as `analysisService()`: a scripted follow-up answer, so a
+    /// UI test never makes a real network call, whatever scenario is active.
+    static func followUpService() -> FollowUpService? {
+        guard isActive else { return nil }
+        return ScriptedFollowUpService()
+    }
+}
+
+private struct ScriptedFollowUpService: FollowUpService {
+    func answer(_ request: FollowUpRequest) async throws -> FollowUpResult {
+        try? await Task.sleep(nanoseconds: 150_000_000)
+        let response = FollowUpResponseDTO(
+            answer: "Based on what you told me, that still points to the same recommendation.",
+            needsResearch: false,
+            suggestedNewDecisionPrompt: nil,
+            durablePreference: nil
+        )
+        return FollowUpResult(response: response, quota: nil)
+    }
 }
 
 /// Replays a scripted exchange in place of the backend. Everything downstream —

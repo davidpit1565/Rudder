@@ -59,6 +59,30 @@ final class DecisionCoordinatorTests: XCTestCase {
         XCTAssertEqual(service.requestCount, 1, "One model call for a simple decision")
     }
 
+    func testAManualComplexityOverrideWinsOverAutoClassification() async throws {
+        let service = MockAnalysisService(response: Responses.ready())
+        let coordinator = makeCoordinator(service)
+
+        // "pizza" alone auto-classifies as .simple -- the override must still win.
+        coordinator.start(prompt: "pizza tonight", complexityOverride: .complex)
+        try await settle(coordinator)
+
+        XCTAssertEqual(coordinator.complexity, .complex)
+        XCTAssertEqual(service.lastRequest()?.complexity, "complex")
+        XCTAssertEqual(service.lastRequest()?.researchLevel, "deep", "The research level follows the overridden tier, not the auto one")
+    }
+
+    func testNoOverrideLeavesAutoClassificationUntouched() async throws {
+        let service = MockAnalysisService(response: Responses.ready())
+        let coordinator = makeCoordinator(service)
+
+        coordinator.start(prompt: "pizza tonight")
+        try await settle(coordinator)
+
+        XCTAssertEqual(coordinator.complexity, .simple)
+        XCTAssertEqual(service.lastRequest()?.researchLevel, "none")
+    }
+
     func testStrengthComesFromTheEngineNotTheModel() async throws {
         let service = MockAnalysisService(response: Responses.ready(strengthStyle: .dominant))
         let coordinator = makeCoordinator(service)

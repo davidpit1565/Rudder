@@ -269,6 +269,36 @@ struct InlineNotice: View {
     }
 }
 
+extension DecisionComplexity {
+    /// User-facing tier names -- "Quick/Standard/Deep" is how RUDDER explains
+    /// its own research depth to the user, kept separate from the internal
+    /// simple/medium/complex vocabulary the engine and backend use.
+    var tierLabel: String {
+        switch self {
+        case .simple: return "Quick"
+        case .medium: return "Standard"
+        case .complex: return "Deep"
+        }
+    }
+}
+
+/// A small, understated tag for which research depth a decision is running
+/// at -- shown on the working screen and the recommendation itself, so the
+/// tier is never a guess.
+struct TierTag: View {
+    let complexity: DecisionComplexity
+
+    var body: some View {
+        Text(complexity.tierLabel)
+            .font(RudderFont.caption.weight(.semibold))
+            .foregroundStyle(RudderColor.secondaryText)
+            .padding(.horizontal, RudderSpacing.s)
+            .padding(.vertical, 4)
+            .background(RudderColor.surfaceRaised, in: Capsule())
+            .accessibilityLabel("\(complexity.tierLabel) analysis")
+    }
+}
+
 // MARK: - Layout helpers
 
 extension View {
@@ -293,4 +323,7 @@ enum RudderID {
     static let tryAgain = "decide.retry"
     static let historyRow = "decide.historyRow"
     static func optionRow(_ optionID: String) -> String { "decide.option.\(optionID)" }
+    static let followUpInput = "decide.followUp.input"
+    static let followUpAsk = "decide.followUp.ask"
+    static let followUpRemember = "decide.followUp.remember"
 }

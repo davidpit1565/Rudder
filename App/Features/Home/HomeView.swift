@@ -18,6 +18,24 @@ struct HomeView: View {
     /// What was already in the field when voice input started, so listening
     /// appends to existing text instead of replacing it.
     @State private var promptBeforeListening = ""
+    /// The user's manual research-depth choice, from the "Options" disclosure.
+    /// `.auto` (the default) is the untouched, auto-classified path -- most
+    /// people never open this.
+    @State private var tierChoice: TierChoice = .auto
+    @State private var showingOptions = false
+
+    private enum TierChoice: Hashable {
+        case auto, simple, medium, complex
+
+        var complexity: DecisionComplexity? {
+            switch self {
+            case .auto: return nil
+            case .simple: return .simple
+            case .medium: return .medium
+            case .complex: return .complex
+            }
+        }
+    }
 
     private var trimmedPrompt: String {
         prompt.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -31,7 +49,9 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: RudderSpacing.l) {
                     header
                     input
+                    options
                     if !isInputFocused {
+                        quotaSummary
                         examples
                         recentDecisions
                     }
@@ -71,14 +91,17 @@ struct HomeView: View {
                 isConnected = connected
             }
         }
+        .task { await environment.refreshQuotaStatus() }
         .fullScreenCover(item: $activeDecision) { active in
-            DecisionFlowView(prompt: active.prompt)
+            DecisionFlowView(prompt: active.prompt, complexityOverride: active.complexityOverride)
         }
         .onChange(of: activeDecision) { oldValue, newValue in
             // Returning from a finished decision should start the next one with
             // a clean slate, not whatever was typed for the last one.
             if oldValue != nil && newValue == nil {
                 prompt = ""
+                tierChoice = .auto
+                showingOptions = false
             }
         }
         .sheet(isPresented: $showingPaywall) {
@@ -177,6 +200,138 @@ struct HomeView: View {
         }
     }
 
+    private var autoClassification: DecisionClassifier.Classification? {
+        canDecide ? DecisionClassifier.classify(trimmedPrompt) : nil
+    }
+
+    /// Hidden by default: most people never need to see this, let alone
+    /// touch it. Opening it shows what RUDDER would pick on its own, today's
+    /// remaining quota per tier, and an optional manual override -- nothing
+    /// here changes behaviour unless the user actually picks something.
+    @ViewBuilder
+    private var options: some View {
+        VStack(alignment: .leading, spacing: RudderSpacing.xs) {
+            Button {
+                withAnimation { showingOptions.toggle() }
+            } label: {
+                HStack(spacing: RudderSpacing.xs) {
+                    Text("Options")
+                        .font(RudderFont.footnote.weight(.medium))
+                        .foregroundStyle(RudderColor.secondaryText)
+                    Image(systemName: showingOptions ? "chevron.up" : "chevron.down")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(RudderColor.tertiaryText)
+                }
+                .frame(minHeight: RudderSpacing.minimumTouchTarget, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if showingOptions {
+                RudderCard {
+                    VStack(alignment: .leading, spacing: RudderSpacing.s) {
+                        Text("How deep should I go?")
+                            .font(RudderFont.footnote.weight(.medium))
+                            .foregroundStyle(RudderColor.tertiaryText)
+                        tierRow(
+                            .auto,
+                            title: "Auto",
+                            subtitle: autoClassification.map { "Currently picks \($0.complexity.tierLabel)" }
+                                ?? "Picks a depth automatically based on what you type"
+                        )
+                        Divider().overlay(RudderColor.separator)
+                        tierRow(.simple, title: DecisionComplexity.simple.tierLabel, subtitle: "No daily limit")
+                        tierRow(.medium, title: DecisionComplexity.medium.tierLabel, subtitle: quotaSubtitle(for: .medium))
+                        tierRow(.complex, title: DecisionComplexity.complex.tierLabel, subtitle: quotaSubtitle(for: .complex))
+                    }
+                }
+            }
+        }
+    }
+
+    private func tierRow(_ choice: TierChoice, title: String, subtitle: String?) -> some View {
+        Button {
+            tierChoice = choice
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: RudderSpacing.xs) {
+                        Text(title)
+                            .font(RudderFont.callout.weight(.medium))
+                            .foregroundStyle(RudderColor.primaryText)
+                        if choice != .auto, autoClassification?.complexity == choice.complexity {
+                            Text("Suggested")
+                                .font(RudderFont.caption.weight(.semibold))
+                                .foregroundStyle(RudderColor.accent)
+                        }
+                    }
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(RudderFont.footnote)
+                            .foregroundStyle(RudderColor.secondaryText)
+                    }
+                }
+                Spacer()
+                Image(systemName: tierChoice == choice ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(tierChoice == choice ? RudderColor.accent : RudderColor.separator)
+            }
+            .frame(minHeight: RudderSpacing.minimumTouchTarget)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(tierChoice == choice ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private func quotaSubtitle(for complexity: DecisionComplexity) -> String? {
+        guard let status = environment.quotaStatus else { return nil }
+        switch complexity {
+        case .simple:
+            return "No daily limit"
+        case .medium:
+            return "\(status.medium.used) of \(status.medium.limit) used today"
+        case .complex:
+            if let daily = status.complex.daily {
+                return "\(daily.used) of \(daily.limit) used today"
+            }
+            if let monthly = status.complex.monthly {
+                return "\(monthly.used) of \(monthly.limit) used this month"
+            }
+            return nil
+        }
+    }
+
+    /// A glance at today's usage without opening "Options" -- never shown
+    /// while the keyboard is up, same as the examples and recent decisions below it.
+    @ViewBuilder
+    private var quotaSummary: some View {
+        if let status = environment.quotaStatus {
+            HStack(spacing: RudderSpacing.s) {
+                quotaChip(label: DecisionComplexity.medium.tierLabel, bucket: status.medium)
+                if let daily = status.complex.daily {
+                    quotaChip(label: DecisionComplexity.complex.tierLabel, bucket: daily)
+                } else if let monthly = status.complex.monthly {
+                    quotaChip(label: DecisionComplexity.complex.tierLabel, bucket: monthly)
+                }
+                Spacer()
+            }
+        }
+    }
+
+    private func quotaChip(label: String, bucket: QuotaBucketStatus) -> some View {
+        HStack(spacing: RudderSpacing.xs) {
+            Text(label)
+                .font(RudderFont.caption.weight(.medium))
+                .foregroundStyle(RudderColor.tertiaryText)
+            Text("\(max(0, bucket.limit - bucket.used))/\(bucket.limit) left")
+                .font(RudderFont.caption.weight(.semibold))
+                .foregroundStyle(RudderColor.secondaryText)
+        }
+        .padding(.horizontal, RudderSpacing.s)
+        .padding(.vertical, 4)
+        .background(RudderColor.surfaceRaised, in: Capsule())
+        .accessibilityElement(children: .combine)
+    }
+
     private var examples: some View {
         VStack(alignment: .leading, spacing: RudderSpacing.s) {
             Text("For example")
@@ -249,13 +404,16 @@ struct HomeView: View {
     private func startDecision() {
         isInputFocused = false
         speechRecognizer.stop()
-        let classification = DecisionClassifier.classify(trimmedPrompt)
-        guard environment.canStartDecision(complexity: classification.complexity) else {
+        // The manual override (if any) is what actually runs, so it's also
+        // what the Free/Pro gate checks -- otherwise picking "Deep" by hand
+        // would bypass the same limit auto-classifying into "complex" hits.
+        let complexity = tierChoice.complexity ?? DecisionClassifier.classify(trimmedPrompt).complexity
+        guard environment.canStartDecision(complexity: complexity) else {
             environment.analytics.track(.paywallShown, properties: [.source: "deep_decision_limit"])
             showingPaywall = true
             return
         }
-        activeDecision = ActiveDecision(prompt: trimmedPrompt)
+        activeDecision = ActiveDecision(prompt: trimmedPrompt, complexityOverride: tierChoice.complexity)
     }
 
     static let examplePrompts = [
@@ -269,6 +427,9 @@ struct HomeView: View {
 struct ActiveDecision: Identifiable, Equatable {
     let id = UUID()
     let prompt: String
+    /// Set only when the user picked a tier manually in the "Options"
+    /// disclosure -- nil is the untouched, auto-classified path.
+    var complexityOverride: DecisionComplexity? = nil
 }
 
 /// One line of history: what was decided, what was chosen, how strong it was.

@@ -1,7 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
-import { AnalysisRequestSchema } from "./schema.js";
+import { AnalysisRequestSchema, FollowUpRequestSchema } from "./schema.js";
 import { analyse as defaultAnalyse, AnalysisError, type AnalysisClients } from "./analyze.js";
+import { followUp as defaultFollowUp, FollowUpError } from "./followup.js";
 import { checkRateLimit, checkDailyLimit } from "./rateLimit.js";
 import { verifyClient } from "./attest.js";
 import { tryAcquire, release } from "./concurrency.js";
@@ -18,6 +19,8 @@ import {
   DEFAULT_FREE_MEDIUM_DAILY_LIMIT,
   DEFAULT_PRO_MEDIUM_DAILY_LIMIT,
   DEFAULT_PRO_COMPLEX_DAILY_LIMIT,
+  DEFAULT_FREE_FOLLOWUP_DAILY_LIMIT,
+  DEFAULT_PRO_FOLLOWUP_DAILY_LIMIT,
 } from "./quota.js";
 import {
   checkGlobalFreeSpendCeiling,
@@ -25,6 +28,7 @@ import {
   checkAbsoluteSpendCeiling,
   refundAbsoluteSpend,
   ESTIMATED_COST_USD,
+  FOLLOWUP_ESTIMATED_COST_USD,
   DEFAULT_MONTHLY_FREE_SPEND_CEILING_USD,
   DEFAULT_MONTHLY_ABSOLUTE_SPEND_CEILING_USD,
 } from "./spendCeiling.js";
@@ -53,6 +57,7 @@ export interface HandlerResponse {
  * without a real (or fake-but-slow) model call. */
 export interface HandlerDependencies {
   analyse?: typeof defaultAnalyse;
+  followUp?: typeof defaultFollowUp;
 }
 
 let cachedClients: AnalysisClients | null = null;
@@ -120,6 +125,16 @@ function dailyQuotaFor(
   return null;
 }
 
+/** Which daily quota bucket governs a follow-up question, by Pro status.
+ * Unlike dailyQuotaFor() for decisions, every follow-up is governed by one of
+ * these two -- there is no "simple, unlimited" case, since even the cheapest
+ * follow-up is a real (if small) model call. */
+function followUpDailyQuota(verifiedPro: boolean): { bucket: string; limit: number } {
+  return verifiedPro
+    ? { bucket: "followup-pro", limit: Number(process.env.DECIDE_PRO_FOLLOWUP_DAILY_LIMIT ?? DEFAULT_PRO_FOLLOWUP_DAILY_LIMIT) }
+    : { bucket: "followup-free", limit: Number(process.env.DECIDE_FREE_FOLLOWUP_DAILY_LIMIT ?? DEFAULT_FREE_FOLLOWUP_DAILY_LIMIT) };
+}
+
 /**
  * Read-only: today's/this-month's usage across every quota the app shows,
  * without spending a unit of any of them. Lets the app display "X of Y used"
@@ -143,6 +158,9 @@ async function handleQuotaStatus(request: HandlerRequest): Promise<HandlerRespon
   const medium = dailyQuotaFor("medium", verifiedPro)!;
   const mediumUsage = await peekDailyQuota(medium.bucket, installId, medium.limit);
 
+  const followup = followUpDailyQuota(verifiedPro);
+  const followupUsage = await peekDailyQuota(followup.bucket, installId, followup.limit);
+
   let complexMonthly: { used: number; limit: number; resetsAt: string } | null = null;
   let complexDaily: { used: number; limit: number; resetsAt: string } | null = null;
   if (verifiedPro) {
@@ -164,7 +182,129 @@ async function handleQuotaStatus(request: HandlerRequest): Promise<HandlerRespon
     simple: { limited: false },
     medium: { used: mediumUsage.used, limit: mediumUsage.limit, resetsAt: mediumUsage.resetsAt },
     complex: { monthly: complexMonthly, daily: complexDaily },
+    followup: { used: followupUsage.used, limit: followupUsage.limit, resetsAt: followupUsage.resetsAt },
   });
+}
+
+/**
+ * A follow-up question on an already-finished decision: its own route,
+ * its own (much smaller) daily quota bucket, and its own (much cheaper, much
+ * faster) model call -- see followup.ts. Mirrors the shape of the main
+ * analyze flow below (client verification, rate limits, spend ceilings,
+ * quota, concurrency gate, refund-on-failure) but without the
+ * complexity-dependent branching that only a new decision needs.
+ */
+async function handleFollowUp(request: HandlerRequest, deps: HandlerDependencies): Promise<HandlerResponse> {
+  const followUp = deps.followUp ?? defaultFollowUp;
+
+  const client = verifyClient(request.headers);
+  if (!client.ok) {
+    return json(client.status, { error: client.reason ?? "forbidden" });
+  }
+
+  const limit = await checkRateLimit(request.clientKey);
+  if (!limit.allowed) {
+    return json(429, { error: "rate_limited" }, { "Retry-After": String(limit.retryAfterSeconds) });
+  }
+
+  const daily = await checkDailyLimit(request.clientKey);
+  if (!daily.allowed) {
+    return json(429, { error: "daily_limit_reached" }, { "Retry-After": String(daily.retryAfterSeconds) });
+  }
+
+  // Generous relative to AnalysisRequestSchema's 32_000: a follow-up thread
+  // carries up to 10 prior exchanges (history) alongside the question itself.
+  if (request.body.length > 48_000) {
+    return json(413, { error: "payload_too_large" });
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(request.body);
+  } catch {
+    return json(400, { error: "invalid_json" });
+  }
+
+  const parsed = FollowUpRequestSchema.safeParse(payload);
+  if (!parsed.success) {
+    return json(400, { error: "invalid_request" });
+  }
+
+  const transactionHeader = request.headers["x-rudder-transaction"];
+  const verifiedPro =
+    transactionHeader != null &&
+    verifyAppStoreTransaction(transactionHeader, { bundleId: BUNDLE_ID, productIds: PRO_PRODUCT_IDS }) !== null;
+
+  let freeSpentEstimate = 0;
+  let absoluteSpentEstimate = 0;
+
+  {
+    const absoluteCeiling = Number(
+      process.env.DECIDE_MONTHLY_ABSOLUTE_SPEND_CEILING_USD ?? DEFAULT_MONTHLY_ABSOLUTE_SPEND_CEILING_USD
+    );
+    const absolute = await checkAbsoluteSpendCeiling(FOLLOWUP_ESTIMATED_COST_USD, absoluteCeiling);
+    if (!absolute.allowed) {
+      return json(503, { error: "monthly_ai_budget_exhausted" }, { "Retry-After": "3600" });
+    }
+    absoluteSpentEstimate = FOLLOWUP_ESTIMATED_COST_USD;
+  }
+
+  if (!verifiedPro) {
+    const spendCeiling = Number(
+      process.env.DECIDE_MONTHLY_FREE_SPEND_CEILING_USD ?? DEFAULT_MONTHLY_FREE_SPEND_CEILING_USD
+    );
+    const spend = await checkGlobalFreeSpendCeiling(FOLLOWUP_ESTIMATED_COST_USD, spendCeiling);
+    if (!spend.allowed) {
+      await refundAbsoluteSpend(absoluteSpentEstimate);
+      return json(503, { error: "monthly_free_budget_exhausted" }, { "Retry-After": "3600" });
+    }
+    freeSpentEstimate = FOLLOWUP_ESTIMATED_COST_USD;
+  }
+
+  const installId = sanitizeInstallId(request.headers["x-rudder-install-id"]) ?? request.clientKey;
+  const dailyBudget = followUpDailyQuota(verifiedPro);
+  const decision = await checkDailyQuota(dailyBudget.bucket, installId, dailyBudget.limit);
+  if (!decision.allowed) {
+    if (freeSpentEstimate > 0) await refundGlobalFreeSpend(freeSpentEstimate);
+    await refundAbsoluteSpend(absoluteSpentEstimate);
+    return json(
+      429,
+      {
+        error: "daily_followup_limit_reached",
+        quota: { bucket: dailyBudget.bucket, used: decision.used, limit: decision.limit, resetsAt: decision.resetsAt },
+      },
+      { "Retry-After": String(decision.retryAfterSeconds) }
+    );
+  }
+  const quotaInfo = { bucket: dailyBudget.bucket, used: decision.used, limit: decision.limit, resetsAt: decision.resetsAt };
+
+  async function refundSpend(): Promise<void> {
+    await refundDailyQuota(dailyBudget.bucket, installId);
+    if (freeSpentEstimate > 0) await refundGlobalFreeSpend(freeSpentEstimate);
+    if (absoluteSpentEstimate > 0) await refundAbsoluteSpend(absoluteSpentEstimate);
+  }
+
+  // Shares the same concurrency pool as /v1/decisions/analyze -- one global
+  // ceiling on in-flight model calls regardless of which endpoint they came
+  // from, since both ultimately compete for the same Groq capacity.
+  const maxConcurrent = Number(process.env.DECIDE_MAX_CONCURRENT_ANALYSES ?? 5);
+  if (!(await tryAcquire(maxConcurrent))) {
+    await refundSpend();
+    return json(503, { error: "server_busy" }, { "Retry-After": "2" });
+  }
+
+  try {
+    const result = await followUp(getClients().groq, parsed.data);
+    return json(200, { ...result, quota: quotaInfo });
+  } catch (error) {
+    await refundSpend();
+    if (error instanceof FollowUpError) {
+      return json(error.status, { error: error.message });
+    }
+    return json(500, { error: "internal_error" });
+  } finally {
+    await release();
+  }
 }
 
 /** Framework-agnostic so the same code runs standalone or on a serverless host. */
@@ -183,6 +323,10 @@ export async function handle(
 
   if (request.method === "GET" && request.path === "/v1/quota/status") {
     return handleQuotaStatus(request);
+  }
+
+  if (request.method === "POST" && request.path === "/v1/decisions/followup") {
+    return handleFollowUp(request, deps);
   }
 
   if (request.method !== "POST" || request.path !== "/v1/decisions/analyze") {
