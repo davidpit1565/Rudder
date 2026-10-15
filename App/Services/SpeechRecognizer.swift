@@ -31,6 +31,18 @@ final class SpeechRecognizer {
 
     private(set) var isRecording = false
     private(set) var errorMessage: String?
+    /// True from the moment `start()` is called until `isRecording` would
+    /// normally flip true -- closes a real window where tapping the mic
+    /// button twice quickly (e.g. once while still waiting on the
+    /// permission prompts to resolve) ran `beginRecording()` twice
+    /// concurrently. The second call's `installTap` then hit a bus that
+    /// already had one installed, which AVAudioEngine reports as an
+    /// uncatchable Objective-C exception, not a Swift error -- confirmed
+    /// live as the app being killed outright on tapping the mic, not a
+    /// graceful failure. `isRecording` alone doesn't close this window: it
+    /// only becomes true at the very end of `beginRecording`, after the
+    /// async permission checks above have already had time to run twice.
+    private var isStarting = false
 
     private let audioEngine = AVAudioEngine()
     private let recognizer = SFSpeechRecognizer(locale: Locale.current)
@@ -44,10 +56,13 @@ final class SpeechRecognizer {
     /// best transcription so far every time it updates -- there is no fixed
     /// duration, the caller decides when enough is enough via `stop()`.
     func start(onTranscript: @escaping @MainActor (String) -> Void) {
+        guard !isRecording, !isStarting else { return }
+        isStarting = true
         errorMessage = nil
         hasFallenBackToServerBasedRecognition = false
         guard let recognizer, recognizer.isAvailable else {
             errorMessage = Failure.notAvailable.localizedDescription
+            isStarting = false
             return
         }
 
@@ -56,6 +71,7 @@ final class SpeechRecognizer {
             async let microphoneAuthorized = requestMicrophoneAuthorization()
             guard await speechAuthorized, await microphoneAuthorized else {
                 errorMessage = Failure.notAuthorized.localizedDescription
+                isStarting = false
                 return
             }
             do {
@@ -63,6 +79,7 @@ final class SpeechRecognizer {
             } catch {
                 errorMessage = Failure.couldNotStart.localizedDescription
             }
+            isStarting = false
         }
     }
 
@@ -118,6 +135,17 @@ final class SpeechRecognizer {
 
         let inputNode = audioEngine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
+        // AVAudioEngine's installTap crashes outright -- an uncatchable
+        // Objective-C assertion, not a Swift error -- when given a format
+        // with no sample rate or no channels, which the input route can
+        // briefly report right after the audio session activates. Refusing
+        // here is the only safe response; the one-shot server-based retry
+        // above still has a path to recover a transient case like this.
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            self.request = nil
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            throw Failure.couldNotStart
+        }
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
             request.append(buffer)
         }
