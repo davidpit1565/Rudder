@@ -57,6 +57,11 @@ public struct FollowUpQuotaInfo: Decodable, Sendable, Equatable {
 public struct FollowUpResult: Sendable {
     public let response: FollowUpResponseDTO
     public let quota: FollowUpQuotaInfo?
+
+    public init(response: FollowUpResponseDTO, quota: FollowUpQuotaInfo?) {
+        self.response = response
+        self.quota = quota
+    }
 }
 
 public protocol FollowUpService: Sendable {
