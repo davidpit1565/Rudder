@@ -41,6 +41,11 @@ struct HomeView: View {
                 .padding(.bottom, RudderSpacing.xxl)
             }
             .scrollDismissesKeyboard(.interactively)
+            // A drag-to-dismiss alone isn't enough -- a plain tap anywhere
+            // empty should also put the keyboard away, same as other apps.
+            // `simultaneousGesture` rather than a plain tap gesture so it
+            // never steals a tap meant for a button or row underneath.
+            .simultaneousGesture(TapGesture().onEnded { isInputFocused = false })
             .background(RudderColor.background)
             .navigationTitle("Decide")
             .navigationBarTitleDisplayMode(.inline)
