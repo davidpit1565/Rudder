@@ -20,9 +20,24 @@ import { isConfigured, pipeline } from "./redis.js";
 let active = 0;
 
 const CONCURRENCY_KEY = "decide:concurrency";
-/** Self-heals a slot leaked by an instance that crashed before releasing —
- * comfortably above the server's own 30s request timeout, not a real budget. */
-const STALE_SECONDS = 60;
+/** Self-heals a slot leaked by an instance that crashed before releasing --
+ * comfortably above the server's actual worst case, not a real budget.
+ *
+ * Must stay well above Vercel's own `maxDuration` (60s, see vercel.json): a
+ * request killed by that hard ceiling never reaches the `finally { release() }`
+ * in handler.ts, so its slot can only clear via this expiry. The key's TTL is
+ * set once, at first creation (`EXPIRE ... NX` below never refreshes it on
+ * later INCRs), so the true bound on how long any single leak can survive is
+ * (this value) seconds after the LEAKING request's own INCR created or found
+ * the key -- not after that request finishes. A value equal to or only
+ * slightly above maxDuration (as a stale 60/60 once sat here) leaves zero
+ * margin and was confirmed live: a build still well under its own 52s
+ * internal deadline (PIPELINE_DEADLINE_MS, analyze.ts) hit "Too many
+ * decisions at once" from a single real client with nothing else running
+ * against it, immediately and on every retry for the better part of a
+ * minute -- consistent with an earlier leaked slot whose 60s clock hadn't
+ * run out yet. */
+const STALE_SECONDS = 90;
 
 export async function tryAcquire(limit: number): Promise<boolean> {
   if (!isConfigured()) {
