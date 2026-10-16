@@ -285,7 +285,13 @@ final class AppEnvironment {
         for tradeOff in record.result.tradeOffs {
             parts.append("Trade-off: gained \(tradeOff.gaining), gave up \(tradeOff.givingUp).")
         }
-        return parts.joined(separator: "\n")
+        let joined = parts.joined(separator: "\n")
+        // Mirrors FollowUpRequestSchema.decisionContext's own `.max(3000)` in
+        // Backend/src/schema.ts. A decision whose reasons and trade-offs sit
+        // near their own max lengths can otherwise exceed it, which would
+        // reject every follow-up on that decision with 400 forever rather
+        // than just this one being a little less complete.
+        return String(joined.prefix(3000))
     }
 
     /// Asks a follow-up question about an already-finished decision and
@@ -293,7 +299,11 @@ final class AppEnvironment {
     /// Throws rather than returning nil on failure, same as a new decision's
     /// own analysis -- the caller shows what actually went wrong.
     func askFollowUp(_ question: String, about record: DecisionRecord) async throws -> FollowUpExchange {
-        let history = followUpExchanges(for: record).map {
+        // Capped at the most recent 10, mirroring FollowUpRequestSchema.history's
+        // own `.max(10)` in Backend/src/schema.ts -- without this, a decision
+        // already past 10 follow-ups would send an oversized history forever,
+        // and every further follow-up on it would be rejected with 400.
+        let history = followUpExchanges(for: record).suffix(10).map {
             FollowUpRequest.Exchange(question: $0.question, answer: $0.answer)
         }
         let request = FollowUpRequest(
@@ -321,7 +331,15 @@ final class AppEnvironment {
     /// evidenceCount 1.
     func acceptFollowUpPreference(_ statement: String, exchangeID: UUID) {
         do {
-            let entry = MemoryEntry(key: "followup:\(exchangeID.uuidString)", statement: statement, evidenceCount: 1)
+            // Keyed by the statement's own text, not the exchange -- the same
+            // wording surfacing again from a follow-up on a different decision
+            // then updates the one existing entry instead of piling up an
+            // identical-looking row next to it. This only catches an exact
+            // repeat; a differently-worded but equivalent preference is a
+            // real product call (how it should merge with MemoryEngine's own
+            // "A>B" keyed candidates), not something to guess at here.
+            let key = "followup:\(statement.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())"
+            let entry = MemoryEntry(key: key, statement: statement, evidenceCount: 1)
             try MemorySafety.validate(entry.statement)
             try persistence.saveMemory(entry)
             analytics.track(.memoryAccepted)
