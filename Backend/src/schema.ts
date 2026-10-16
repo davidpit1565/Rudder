@@ -200,7 +200,7 @@ export const FollowUpResponseSchema = z.object({
   needsResearch: z.boolean()
     .describe("True only when answering well would require looking up current, external facts this call cannot verify -- not for anything answerable from the existing decision context."),
   suggestedNewDecisionPrompt: z.string().max(2000).nullable()
-    .describe("When needsResearch is true, or the question is really a different decision, a ready-to-use prompt (including relevant context from the original decision) for starting a new decision. Otherwise null."),
+    .describe("Set only when needsResearch is true: a ready-to-use prompt (including relevant context from the original decision) for starting a new decision. Otherwise null -- the app only ever shows this alongside needsResearch being true."),
   durablePreference: z.object({
     statement: z.string().max(200).describe("A short, behavioural, user-facing sentence, e.g. 'You prioritize flexibility over price.' Never an identity claim."),
   }).nullable().describe("Set only when this answer revealed a preference worth remembering for future decisions. Most answers set this to null."),
