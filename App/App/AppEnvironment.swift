@@ -205,6 +205,33 @@ final class AppEnvironment {
         pendingMemoryCandidate = nil
     }
 
+    /// Every preference `MemoryEngine` can currently find, not just the one
+    /// `refreshMemoryCandidate` proposes after a single decision -- a
+    /// deliberate, user-initiated scan across everything already decided,
+    /// for someone who doesn't want to wait for them one at a time.
+    /// Still returns only candidates, never writes anything: the bulk
+    /// "Remember" action below is the actual consent.
+    func allMemoryCandidates() -> [MemoryCandidate] {
+        guard isPro else { return [] }
+        return MemoryEngine.candidates(from: decisions, existing: memory, excludedKeys: declinedMemoryKeys)
+    }
+
+    /// Consent-gated the same way `acceptPendingMemory` is, just for several
+    /// candidates from one explicit "Remember selected" action instead of
+    /// one standing proposal. A candidate that fails safety validation is
+    /// dropped silently, same as the single-candidate path -- it never
+    /// blocks the rest of the batch.
+    func acceptMemoryCandidates(_ candidates: [MemoryCandidate]) {
+        guard !candidates.isEmpty else { return }
+        for candidate in candidates {
+            guard let entry = try? MemoryEngine.accept(candidate) else { continue }
+            try? persistence.saveMemory(entry)
+        }
+        analytics.track(.memoryAccepted)
+        pendingMemoryCandidate = nil
+        reload()
+    }
+
     func setMemoryEnabled(_ isEnabled: Bool, for entry: MemoryEntry) {
         do {
             try persistence.setMemoryEnabled(isEnabled, key: entry.key)

@@ -165,6 +165,45 @@ final class EndToEndTests: XCTestCase {
         XCTAssertFalse(MemoryEngine.candidates(from: environment.decisions).isEmpty, "…but the pattern is there to offer once they subscribe")
     }
 
+    func testAllMemoryCandidatesIsEmptyWithoutPro() async throws {
+        for _ in 0..<2 {
+            let coordinator = makeCoordinator()
+            coordinator.start(prompt: "MacBook Air or MacBook Pro?")
+            try await settle(coordinator)
+            let record = try XCTUnwrap(coordinator.makeChoice(optionID: "air"))
+            environment.save(record)
+            environment.recordOutcome(Outcome(rating: .great), for: record)
+        }
+
+        XCTAssertFalse(environment.isPro)
+        XCTAssertTrue(environment.allMemoryCandidates().isEmpty, "The bulk scan is Pro-gated the same way the single proposal is")
+        XCTAssertFalse(MemoryEngine.candidates(from: environment.decisions).isEmpty, "…but the pattern is there once they subscribe")
+    }
+
+    func testAcceptingMemoryCandidatesInBulkStoresAllOfThem() {
+        let candidates = [
+            MemoryCandidate(key: "a>b", statement: "You often prioritize convenience over price.", evidenceCount: 2),
+            MemoryCandidate(key: "c>d", statement: "You often prioritize speed over cost.", evidenceCount: 3)
+        ]
+
+        environment.acceptMemoryCandidates(candidates)
+
+        XCTAssertEqual(environment.memory.count, 2)
+        XCTAssertEqual(Set(environment.memory.map(\.statement)), Set(candidates.map(\.statement)))
+    }
+
+    func testAnUnsafeCandidateInABulkAcceptIsDroppedWithoutBlockingTheRest() {
+        let candidates = [
+            MemoryCandidate(key: "a>b", statement: "You often prioritize convenience over price.", evidenceCount: 2),
+            MemoryCandidate(key: "unsafe", statement: "You are an impulsive person.", evidenceCount: 5)
+        ]
+
+        environment.acceptMemoryCandidates(candidates)
+
+        XCTAssertEqual(environment.memory.count, 1, "The unsafe statement must not be stored, but must not stop the safe one either")
+        XCTAssertEqual(environment.memory.first?.statement, "You often prioritize convenience over price.")
+    }
+
     // MARK: Limits
 
     func testTheFirstDecisionIsNeverBlockedByTheFreeLimit() {

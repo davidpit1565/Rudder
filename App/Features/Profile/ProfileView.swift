@@ -8,6 +8,15 @@ struct ProfileView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var paywallContext: PaywallView.Context?
     @State private var confirmation: DataConfirmation?
+    @State private var memorizeAllSession: MemorizeAllSession?
+    @State private var showingNoNewPatterns = false
+
+    /// Wraps a scan's results so `.sheet(item:)` can present them -- a plain
+    /// `[MemoryCandidate]` array has nothing of its own to key the sheet on.
+    private struct MemorizeAllSession: Identifiable {
+        let id = UUID()
+        let candidates: [MemoryCandidate]
+    }
 
     private enum DataConfirmation: String, Identifiable {
         case memory
@@ -55,6 +64,17 @@ struct ProfileView: View {
             .sheet(item: $paywallContext) { context in
                 PaywallView(context: context)
             }
+            .sheet(item: $memorizeAllSession) { session in
+                MemorizeAllSheet(
+                    candidates: session.candidates,
+                    onRemember: { selectedKeys in
+                        let chosen = session.candidates.filter { selectedKeys.contains($0.key) }
+                        environment.acceptMemoryCandidates(chosen)
+                        memorizeAllSession = nil
+                    },
+                    onClose: { memorizeAllSession = nil }
+                )
+            }
             .alert(
                 confirmation?.title ?? "",
                 isPresented: Binding(
@@ -68,6 +88,20 @@ struct ProfileView: View {
             } message: { item in
                 Text(item.message)
             }
+            .alert("Nothing new found", isPresented: $showingNoNewPatterns) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("I haven't noticed any new patterns across your decisions yet.")
+            }
+        }
+    }
+
+    private func startMemorizeAllScan() {
+        let candidates = environment.allMemoryCandidates()
+        if candidates.isEmpty {
+            showingNoNewPatterns = true
+        } else {
+            memorizeAllSession = MemorizeAllSession(candidates: candidates)
         }
     }
 
@@ -210,17 +244,30 @@ struct ProfileView: View {
                         SecondaryButton(title: "See Pro") { paywallContext = .memory }
                     }
                 }
-            } else if environment.memory.isEmpty {
-                EmptyStateView(
-                    title: "Nothing learned yet.",
-                    message: "After a few decisions, RUDDER may notice a pattern and ask whether to remember it.",
-                    systemImage: "brain"
-                )
             } else {
-                VStack(spacing: RudderSpacing.s) {
-                    ForEach(environment.memory) { entry in
-                        MemoryRow(entry: entry)
+                VStack(alignment: .leading, spacing: RudderSpacing.s) {
+                    if environment.memory.isEmpty {
+                        EmptyStateView(
+                            title: "Nothing learned yet.",
+                            message: "After a few decisions, RUDDER may notice a pattern and ask whether to remember it.",
+                            systemImage: "brain"
+                        )
+                    } else {
+                        VStack(spacing: RudderSpacing.s) {
+                            ForEach(environment.memory) { entry in
+                                MemoryRow(entry: entry)
+                            }
+                        }
                     }
+                    // A one-time, user-initiated scan across every decision
+                    // already made -- for someone who'd rather do this once
+                    // than wait for a candidate to surface one decision at a
+                    // time. Still only a proposal: nothing here writes
+                    // anything without the explicit "Remember" below.
+                    SecondaryButton(title: "Scan all decisions", systemImage: "magnifyingglass") {
+                        startMemorizeAllScan()
+                    }
+                    .disabled(environment.decisions.isEmpty)
                 }
             }
         }
@@ -381,5 +428,95 @@ struct MemoryConsentSheet: View {
         .screenPadding()
         .padding(.vertical, RudderSpacing.l)
         .presentationDetents([.medium])
+    }
+}
+
+/// One deliberate scan across every decision already made, instead of
+/// waiting for a candidate to surface one decision at a time. Every
+/// candidate starts selected -- the ask is "which of these should I not
+/// remember", not an empty list someone has to build up from nothing -- but
+/// nothing is written until "Remember" is actually pressed.
+struct MemorizeAllSheet: View {
+    let candidates: [MemoryCandidate]
+    let onRemember: (Set<String>) -> Void
+    let onClose: () -> Void
+
+    @State private var selectedKeys: Set<String>
+
+    init(candidates: [MemoryCandidate], onRemember: @escaping (Set<String>) -> Void, onClose: @escaping () -> Void) {
+        self.candidates = candidates
+        self.onRemember = onRemember
+        self.onClose = onClose
+        _selectedKeys = State(initialValue: Set(candidates.map(\.key)))
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: RudderSpacing.m) {
+                    Text("I looked back across everything you've decided and found \(candidates.count) \(candidates.count == 1 ? "pattern" : "patterns").")
+                        .font(RudderFont.callout)
+                        .foregroundStyle(RudderColor.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    ForEach(candidates) { candidate in
+                        candidateRow(candidate)
+                    }
+                }
+                .screenPadding()
+                .padding(.vertical, RudderSpacing.m)
+            }
+            .background(RudderColor.background)
+            .navigationTitle("Memorize everything")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Close", action: onClose)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                PrimaryButton(
+                    title: selectedKeys.isEmpty ? "Select at least one" : "Remember \(selectedKeys.count)",
+                    isEnabled: !selectedKeys.isEmpty
+                ) {
+                    onRemember(selectedKeys)
+                }
+                .screenPadding()
+                .padding(.vertical, RudderSpacing.s)
+                .background(.bar)
+            }
+        }
+    }
+
+    private func candidateRow(_ candidate: MemoryCandidate) -> some View {
+        let isSelected = selectedKeys.contains(candidate.key)
+        return Button {
+            if isSelected {
+                selectedKeys.remove(candidate.key)
+            } else {
+                selectedKeys.insert(candidate.key)
+            }
+        } label: {
+            HStack(alignment: .top, spacing: RudderSpacing.m) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isSelected ? RudderColor.accent : RudderColor.separator)
+                VStack(alignment: .leading, spacing: RudderSpacing.xs) {
+                    Text(candidate.statement)
+                        .font(RudderFont.callout)
+                        .foregroundStyle(RudderColor.primaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Noticed in \(candidate.evidenceCount) of your decisions")
+                        .font(RudderFont.caption)
+                        .foregroundStyle(RudderColor.tertiaryText)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(RudderSpacing.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RudderColor.surface)
+            .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }

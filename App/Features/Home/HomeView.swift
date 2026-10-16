@@ -15,6 +15,9 @@ struct HomeView: View {
     @State private var isConnected = true
     @FocusState private var isInputFocused: Bool
     @State private var speechRecognizer = SpeechRecognizer()
+    /// Drives the mic button's pulse while actually listening -- toggled by
+    /// `isRecording`'s own changes, never a free-running animation.
+    @State private var isMicPulsing = false
     /// What was already in the field when voice input started, so listening
     /// appends to existing text instead of replacing it.
     @State private var promptBeforeListening = ""
@@ -129,7 +132,11 @@ struct HomeView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: RudderSpacing.s) {
             Text("What are you deciding?")
-                .font(RudderFont.display)
+                // Heavier than RudderFont.display's own weight -- this is the
+                // one line every visit to the app opens on, so it carries
+                // more visual weight than the same token used elsewhere
+                // (the recommendation's option name, the paywall headline).
+                .font(RudderFont.display.weight(.heavy))
                 .foregroundStyle(RudderColor.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Tell me what you're trying to figure out.")
@@ -159,8 +166,13 @@ struct HomeView: View {
                 .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous)
-                        .stroke(isInputFocused ? RudderColor.accent : RudderColor.separator, lineWidth: 1)
+                        .stroke(isInputFocused ? RudderColor.accent : RudderColor.separator, lineWidth: isInputFocused ? 1.5 : 1)
                 )
+                // A small, physical response to focus rather than a flat colour
+                // swap -- the box itself settles into place rather than
+                // just changing colour.
+                .scaleEffect(isInputFocused ? 1.01 : 1)
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isInputFocused)
                 .accessibilityLabel("What are you deciding?")
                 .accessibilityIdentifier(RudderID.decisionInput)
 
@@ -170,11 +182,24 @@ struct HomeView: View {
                         .foregroundStyle(speechRecognizer.isRecording ? RudderColor.onAccent : RudderColor.secondaryText)
                         .frame(width: RudderSpacing.minimumTouchTarget, height: RudderSpacing.minimumTouchTarget)
                         .background(speechRecognizer.isRecording ? RudderColor.accent : .clear, in: .circle)
+                        // A soft, steady pulse while genuinely listening --
+                        // never while idle -- so "it's live" reads at a glance
+                        // without reading as decoration.
+                        .scaleEffect(speechRecognizer.isRecording && isMicPulsing ? 1.15 : 1)
                 }
                 .buttonStyle(.plain)
                 .padding(RudderSpacing.xs)
                 .accessibilityLabel(speechRecognizer.isRecording ? "Stop voice input" : "Start voice input")
                 .accessibilityIdentifier(RudderID.voiceInput)
+                .animation(
+                    speechRecognizer.isRecording
+                        ? .easeInOut(duration: 0.8).repeatForever(autoreverses: true)
+                        : .default,
+                    value: isMicPulsing
+                )
+                .onChange(of: speechRecognizer.isRecording) { _, isRecording in
+                    isMicPulsing = isRecording
+                }
             }
 
             if let errorMessage = speechRecognizer.errorMessage {
