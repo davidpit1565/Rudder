@@ -639,7 +639,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Config/RudderWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 20;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/RudderWidgetExtension-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -813,7 +813,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Config/RudderWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 20;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/RudderWidgetExtension-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
