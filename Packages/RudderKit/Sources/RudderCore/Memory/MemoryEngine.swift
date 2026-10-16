@@ -38,6 +38,16 @@ public struct MemoryCandidate: Identifiable, Hashable, Sendable {
     public let key: String
     public let statement: String
     public let evidenceCount: Int
+
+    // Without this, Swift's synthesized memberwise init for a public struct
+    // is itself only internal -- confirmed to actually break a build this
+    // way once already (RudderFlow.FollowUpResult), so every public struct
+    // callers construct directly gets one explicitly from here on.
+    public init(key: String, statement: String, evidenceCount: Int) {
+        self.key = key
+        self.statement = statement
+        self.evidenceCount = evidenceCount
+    }
 }
 
 /// Learns from completed decisions rather than from an onboarding quiz.

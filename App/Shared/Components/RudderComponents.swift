@@ -299,6 +299,64 @@ struct TierTag: View {
     }
 }
 
+// MARK: - Glass segmented control
+
+/// A segmented control styled after Liquid Glass -- translucent material, a
+/// soft specular highlight, and a thumb that slides between options -- built
+/// from ordinary SwiftUI materials rather than the real `glassEffect()` API.
+/// That API needs an SDK newer than this project's CI toolchain currently
+/// ships (confirmed: CI still builds on Xcode 16.4), so using it directly
+/// would fail to compile there; this gets the same look without it.
+struct GlassSegmentedControl<Option: Hashable>: View {
+    let options: [Option]
+    let label: (Option) -> String
+    @Binding var selection: Option
+
+    @Namespace private var namespace
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(options, id: \.self) { option in
+                let isSelected = option == selection
+                Text(label(option))
+                    .font(RudderFont.footnote.weight(isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? RudderColor.primaryText : RudderColor.secondaryText)
+                    .padding(.vertical, RudderSpacing.s)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: RudderSpacing.minimumTouchTarget - RudderSpacing.s)
+                    .background {
+                        if isSelected {
+                            Capsule()
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    Capsule().fill(
+                                        LinearGradient(
+                                            colors: [.white.opacity(0.35), .clear],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                                )
+                                .overlay(Capsule().stroke(.white.opacity(0.25), lineWidth: 0.75))
+                                .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
+                                .matchedGeometryEffect(id: "glassSegmentThumb", in: namespace)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            selection = option
+                        }
+                    }
+                    .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+            }
+        }
+        .padding(3)
+        .background(RudderColor.surfaceRaised, in: Capsule())
+        .overlay(Capsule().stroke(RudderColor.separator, lineWidth: 0.5))
+    }
+}
+
 // MARK: - Layout helpers
 
 extension View {

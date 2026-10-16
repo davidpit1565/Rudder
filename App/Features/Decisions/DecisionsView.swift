@@ -70,13 +70,13 @@ struct DecisionsView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: RudderSpacing.s) {
-                            Picker("Filter", selection: $filter) {
-                                ForEach(Filter.allCases) { option in
-                                    Text(option.rawValue).tag(option)
-                                }
-                            }
-                            .pickerStyle(.segmented)
+                            GlassSegmentedControl(
+                                options: Filter.allCases,
+                                label: { $0.rawValue },
+                                selection: $filter
+                            )
                             .padding(.bottom, RudderSpacing.xs)
+                            .accessibilityLabel("Filter")
 
                             if filtered.isEmpty {
                                 EmptyStateView(
