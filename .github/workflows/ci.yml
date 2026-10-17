@@ -99,6 +99,15 @@ jobs:
   release-config:
     name: iOS Release build (production config)
     runs-on: macos-15
+    # Only on an actual push to main (i.e. right as a PR merges), not on every
+    # PR update: this is the one check whose job is to catch a misconfigured
+    # production build before it ships, which is exactly the moment it lands
+    # on main, not every intermediate commit on an open PR. macOS runner
+    # minutes count 10x against GitHub's free Actions quota (see the Rudder
+    # repo's own Actions usage), so dropping this from the common PR path
+    # cuts a full third of this workflow's macOS minutes with no loss of
+    # coverage -- the two device-matrix jobs above still run on every PR.
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
 
