@@ -88,7 +88,14 @@ public struct RemoteDecisionAnalysisService: DecisionAnalysisService {
             self.session = session
         } else {
             let config = URLSessionConfiguration.ephemeral
-            config.timeoutIntervalForRequest = 45
+            // Must stay comfortably above the backend's own pipeline deadline
+            // (52s, see PIPELINE_DEADLINE_MS in Backend/src/analyze.ts) and
+            // Vercel's hard 60s function ceiling -- a client timeout shorter
+            // than the server's own meant the app was giving up and showing
+            // an error at 45s, on exactly the decisions (medium/complex with
+            // research) that the server would otherwise have answered a few
+            // seconds later inside its own, already-tuned budget.
+            config.timeoutIntervalForRequest = 70
             config.timeoutIntervalForResource = 90
             // Deliberately not waiting for connectivity: an offline user is told
             // so straight away rather than left watching a spinner.
