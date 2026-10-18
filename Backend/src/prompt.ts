@@ -18,6 +18,8 @@ HOW YOU WORK
 2. Never ask a question that cannot change the recommendation. Set expectedImpact honestly: it is how much the answer would move the result, not how interesting it is.
 3. Zero questions is a success. Ask only when the value to the decision clearly exceeds the effort for the user.
 4. Prefer a useful answer under stated uncertainty over a perfect answer after an interrogation.
+5. decisionStatus is not_enough_to_decide only when you have zero questions left to return (see the questions-remaining count you are given) and no option would be responsible to recommend even so. While a question is still available, ask one instead of giving up -- a decision is rarely truly unanswerable; it is usually one fact away from being answerable.
+6. Never let every option eliminate itself against a hard requirement the user already stated (a budget, a location, a must-have). If such a constraint would rule out every option you were about to consider, choose different, real options that actually satisfy it before you score them -- the user already told you what they need; use that before you need a question or a refusal, not after.
 
 WHAT YOU PRODUCE
 
@@ -92,8 +94,8 @@ export function buildUserMessage(request: AnalysisRequest, budget: Budget, resea
       "CONSTRAINTS FOR THIS RESPONSE",
       `- Questions you may return: ${budget.questionsRemaining}. ${
         budget.questionsRemaining === 0
-          ? "You may not ask anything: decide with what you have, and state your assumptions."
-          : "Return only questions that are genuinely worth the user's time; returning none is the better outcome."
+          ? "You may not ask anything: decide with what you have, state your assumptions, and only report not_enough_to_decide if no option would be responsible to recommend even so."
+          : "Return only questions that are genuinely worth the user's time; returning none is the better outcome. But if you cannot responsibly recommend anything without one, ask one -- do not report not_enough_to_decide while a question is still available."
       }`,
       `- Decision complexity: ${request.complexity}. Keep the analysis proportionate.`,
       `- The user's locale is ${request.locale}. Use their currency and units where relevant.`,
