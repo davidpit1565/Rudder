@@ -179,7 +179,8 @@ struct ProfileView: View {
     /// Live usage against every quota the backend actually enforces
     /// (`AppEnvironment.refreshQuotaStatus()`) -- omitted entirely rather than
     /// showing a stale or fabricated number when that fetch hasn't succeeded
-    /// yet. "Simple" never appears here: it is never limited, at any tier.
+    /// yet. "Simple" has no bucket to read -- it is never limited, at any
+    /// tier -- so it is shown as a flat "Unlimited" row instead.
     private var usageSection: some View {
         Group {
             if let status = environment.quotaStatus {
@@ -187,6 +188,7 @@ struct ProfileView: View {
                     SectionHeader(title: "Today's decisions")
                     RudderCard {
                         VStack(alignment: .leading, spacing: RudderSpacing.m) {
+                            unlimitedRow(label: "Simple")
                             usageRow(label: "Medium", bucket: status.medium)
                             if let monthly = status.complex.monthly {
                                 // A Free install: this is the monthly quota that makes a
@@ -206,6 +208,22 @@ struct ProfileView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// `status.medium`/`.complex` are the only quota buckets the backend
+    /// reports -- a simple decision is never metered, at any tier, so there
+    /// is no bucket for it to read. Shown explicitly rather than just
+    /// omitted, so "why don't I see Simple here" has an answer on screen.
+    private func unlimitedRow(label: String) -> some View {
+        HStack {
+            Text(label)
+                .font(RudderFont.callout)
+                .foregroundStyle(RudderColor.primaryText)
+            Spacer()
+            Text("Unlimited")
+                .font(RudderFont.callout.weight(.medium))
+                .foregroundStyle(RudderColor.secondaryText)
         }
     }
 
