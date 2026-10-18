@@ -68,16 +68,26 @@ struct PaywallView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: RudderSpacing.s) {
-                    PrimaryButton(
-                        title: isSelectedProductTrialEligible ? "Start Free Trial" : "Start Pro",
-                        isLoading: isPurchasing,
-                        isEnabled: selectedProduct != nil
-                    ) {
-                        purchase()
+                    if subscriptions.isPro {
+                        // Reached from "See what's included" on an already-active
+                        // subscription -- a purchase button here would offer to buy
+                        // what they already have.
+                        Text("You're on Pro. Thanks for the support.")
+                            .font(RudderFont.callout.weight(.medium))
+                            .foregroundStyle(RudderColor.primaryText)
+                            .frame(maxWidth: .infinity, minHeight: RudderSpacing.minimumTouchTarget)
+                    } else {
+                        PrimaryButton(
+                            title: isSelectedProductTrialEligible ? "Start Free Trial" : "Start Pro",
+                            isLoading: isPurchasing,
+                            isEnabled: selectedProduct != nil
+                        ) {
+                            purchase()
+                        }
+                        Button("Restore Purchases") { restore() }
+                            .font(RudderFont.footnote)
+                            .frame(minHeight: RudderSpacing.minimumTouchTarget)
                     }
-                    Button("Restore Purchases") { restore() }
-                        .font(RudderFont.footnote)
-                        .frame(minHeight: RudderSpacing.minimumTouchTarget)
                 }
                 .screenPadding()
                 .padding(.vertical, RudderSpacing.s)
