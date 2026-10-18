@@ -47,6 +47,7 @@ struct PaywallView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: RudderSpacing.l) {
                     header
+                    comparisonTable
                     benefits
                     plans
                     if let message {
@@ -114,6 +115,69 @@ struct PaywallView: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    /// A scannable tier matrix, ahead of the narrative benefits below: the
+    /// first thing a user should be able to answer at a glance is "what do I
+    /// actually get for free, and what changes if I pay" -- not have to
+    /// infer it from a bulleted list of what Pro adds.
+    private var comparisonTable: some View {
+        RudderCard {
+            VStack(spacing: 0) {
+                comparisonHeader
+                comparisonDivider
+                comparisonRow(label: "Deep decisions", free: "First one free", pro: "Unlimited")
+                comparisonDivider
+                comparisonRow(label: "Decision history", free: "Last \(FeatureAccess.freeHistoryLimit)", pro: "Full, searchable")
+                comparisonDivider
+                comparisonRow(label: "Decision Memory", free: "—", pro: "✓", proIsCheckmark: true)
+                comparisonDivider
+                comparisonRow(label: "Outcome learning", free: "—", pro: "✓", proIsCheckmark: true)
+            }
+        }
+    }
+
+    private var comparisonHeader: some View {
+        HStack(spacing: RudderSpacing.s) {
+            Text("").frame(maxWidth: .infinity, alignment: .leading)
+            Text("Free")
+                .frame(width: 72)
+            Text("Pro")
+                .frame(width: 72)
+        }
+        .font(RudderFont.caption.weight(.semibold))
+        .foregroundStyle(RudderColor.tertiaryText)
+        .padding(.bottom, RudderSpacing.s)
+    }
+
+    private var comparisonDivider: some View {
+        Rectangle()
+            .fill(RudderColor.separator)
+            .frame(height: 0.5)
+            .padding(.vertical, RudderSpacing.s)
+    }
+
+    private func comparisonRow(label: String, free: String, pro: String, proIsCheckmark: Bool = false) -> some View {
+        HStack(spacing: RudderSpacing.s) {
+            Text(label)
+                .font(RudderFont.footnote)
+                .foregroundStyle(RudderColor.primaryText)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(free)
+                .font(RudderFont.footnote)
+                .foregroundStyle(RudderColor.secondaryText)
+                .frame(width: 72)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(pro)
+                .font(RudderFont.footnote.weight(proIsCheckmark ? .semibold : .regular))
+                .foregroundStyle(proIsCheckmark ? RudderColor.accent : RudderColor.primaryText)
+                .frame(width: 72)
+                .multilineTextAlignment(.center)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): Free gets \(free == "—" ? "nothing" : free). Pro gets \(pro == "✓" ? "this" : pro).")
     }
 
     /// Only what Pro actually changes. The analysis itself is the same either way,

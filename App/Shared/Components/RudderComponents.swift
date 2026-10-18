@@ -384,4 +384,7 @@ enum RudderID {
     static let followUpInput = "decide.followUp.input"
     static let followUpAsk = "decide.followUp.ask"
     static let followUpRemember = "decide.followUp.remember"
+    static let shareDecision = "decide.share"
+    static let onboardingContinue = "onboarding.continue"
+    static let onboardingFinish = "onboarding.finish"
 }

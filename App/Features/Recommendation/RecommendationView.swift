@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import UIKit
 import RudderCore
 
 /// The answer first. Everything that explains it lives behind "See analysis".
@@ -404,6 +405,8 @@ private struct ChoiceConfirmation: View {
     let result: DecisionResult
     let chosenOptionID: String
 
+    @Environment(AppEnvironment.self) private var environment
+
     private var chosen: DecisionOption? { result.option(withID: chosenOptionID) }
     private var alternative: DecisionOption? {
         guard let recommended = result.recommendedOptionID, recommended != chosenOptionID else {
@@ -429,6 +432,21 @@ private struct ChoiceConfirmation: View {
             .sorted { $0.weight > $1.weight }
             .prefix(3)
             .map(\.name)
+    }
+
+    /// Rendered fresh each time rather than cached: the card is a handful of
+    /// text lines, cheap to lay out, and this keeps the view a plain value
+    /// type with no lifecycle to manage for a one-off render.
+    private var shareImage: Image {
+        let card = ShareableDecisionCard(
+            optionName: chosen?.name ?? "my decision",
+            headline: result.headline.isEmpty ? "Decided with Rudder" : result.headline,
+            topReason: result.reasons.first?.detail
+        )
+        let renderer = ImageRenderer(content: card)
+        renderer.scale = UIScreen.main.scale
+        guard let uiImage = renderer.uiImage else { return Image(systemName: "questionmark.circle") }
+        return Image(uiImage: uiImage)
     }
 
     var body: some View {
@@ -477,6 +495,23 @@ private struct ChoiceConfirmation: View {
             Text("Your choice is yours.")
                 .font(RudderFont.callout)
                 .foregroundStyle(RudderColor.secondaryText)
+
+            ShareLink(
+                item: shareImage,
+                preview: SharePreview("I decided: \(chosen?.name ?? "")", image: shareImage)
+            ) {
+                HStack(spacing: RudderSpacing.xs) {
+                    Image(systemName: "square.and.arrow.up")
+                    Text("Share this decision")
+                }
+                .font(RudderFont.footnote.weight(.semibold))
+                .foregroundStyle(RudderColor.accent)
+                .frame(minHeight: RudderSpacing.minimumTouchTarget)
+            }
+            .simultaneousGesture(TapGesture().onEnded {
+                environment.analytics.track(.decisionShared)
+            })
+            .accessibilityIdentifier(RudderID.shareDecision)
         }
     }
 }
