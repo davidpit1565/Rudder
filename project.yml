@@ -96,7 +96,12 @@ targets:
         PRODUCT_NAME: RudderWidgetExtension
         PRODUCT_BUNDLE_IDENTIFIER: com.davidpitchkhadze.rudder.widget
         MARKETING_VERSION: 1.0.0
-        CURRENT_PROJECT_VERSION: 1
+        # Must match Config/Shared.xcconfig's CURRENT_PROJECT_VERSION -- Apple
+        # requires an app and its extensions to share one build number per
+        # archive. This is a second, independent source for the same number
+        # (XcodeGen inlines it here rather than referencing the xcconfig for
+        # this target), so bump both together, by hand, every time.
+        CURRENT_PROJECT_VERSION: 20
         INFOPLIST_FILE: Config/RudderWidgetExtension-Info.plist
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: Config/RudderWidgetExtension.entitlements
