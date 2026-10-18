@@ -500,13 +500,14 @@ private struct ChoiceConfirmation: View {
                 item: shareImage,
                 preview: SharePreview("I decided: \(chosen?.name ?? "")", image: shareImage)
             ) {
-                HStack(spacing: RudderSpacing.xs) {
-                    Image(systemName: "square.and.arrow.up")
-                    Text("Share this decision")
+                HStack(spacing: RudderSpacing.s) {
+                    Image(systemName: "square.and.arrow.up").font(.caption.weight(.semibold))
+                    Text("Share this decision").font(RudderFont.callout.weight(.medium))
                 }
-                .font(RudderFont.footnote.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: RudderSpacing.minimumTouchTarget)
                 .foregroundStyle(RudderColor.accent)
-                .frame(minHeight: RudderSpacing.minimumTouchTarget)
+                .background(RudderColor.surfaceRaised)
+                .clipShape(Capsule(style: .continuous))
             }
             .simultaneousGesture(TapGesture().onEnded {
                 environment.analytics.track(.decisionShared)

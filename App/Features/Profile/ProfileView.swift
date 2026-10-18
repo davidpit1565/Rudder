@@ -143,6 +143,7 @@ struct ProfileView: View {
                                 .font(RudderFont.footnote)
                                 .foregroundStyle(RudderColor.secondaryText)
                         }
+                        SecondaryButton(title: "See what's included") { paywallContext = .profile }
                     case .billingRetry(let expires):
                         Text("Pro — billing issue")
                             .font(RudderFont.headline)
@@ -151,6 +152,7 @@ struct ProfileView: View {
                             .font(RudderFont.footnote)
                             .foregroundStyle(RudderColor.moderate)
                             .fixedSize(horizontal: false, vertical: true)
+                        SecondaryButton(title: "See what's included") { paywallContext = .profile }
                     case .expired(let date):
                         Text("Pro has ended")
                             .font(RudderFont.headline)

@@ -34,7 +34,7 @@ struct PrimaryButton: View {
             .padding(.vertical, RudderSpacing.s)
             .foregroundStyle(RudderColor.onAccent)
             .background(RudderColor.accent.opacity(isEnabled && !isLoading ? 1 : 0.4))
-            .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous))
+            .clipShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled || isLoading)
@@ -61,7 +61,7 @@ struct SecondaryButton: View {
             .frame(maxWidth: .infinity, minHeight: RudderSpacing.minimumTouchTarget)
             .foregroundStyle(RudderColor.accent)
             .background(RudderColor.surfaceRaised)
-            .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous))
+            .clipShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(identifier ?? title)
