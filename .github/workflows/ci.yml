@@ -54,6 +54,13 @@ jobs:
   app:
     name: iOS app (${{ matrix.device }})
     runs-on: macos-15
+    # iPhone 16 runs on every PR and push. iPhone SE -- the smallest supported
+    # screen, there to catch a layout bug that only shows up at that extreme --
+    # only runs on push to main (i.e. right as a PR merges): macOS runner
+    # minutes count 10x against GitHub's free Actions quota, and this repo was
+    # already close to exhausting it, so the second device is now a
+    # before-it-ships check rather than a cost paid on every PR commit.
+    if: github.event_name == 'push' || matrix.device == 'iPhone 16'
     strategy:
       fail-fast: false
       matrix:
