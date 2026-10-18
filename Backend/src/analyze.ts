@@ -172,7 +172,7 @@ async function analyseWithGemini(
  * analysis step now, every complexity (see budget.ts): research still runs
  * on Gemini regardless of this provider.
  */
-async function analyseWithGroq(
+export async function analyseWithGroq(
   client: OpenAI,
   request: AnalysisRequest,
   budget: Budget,
