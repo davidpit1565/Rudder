@@ -469,6 +469,22 @@ export async function handle(
 
   try {
     const result = await analyse(getClients(), parsed.data);
+    // A question-only round is not a delivered decision yet -- the user will
+    // call this endpoint again to continue it, and that call, not this one,
+    // is what should cost a unit of their daily/monthly allowance. Without
+    // this, a decision that takes several clarifying questions to resolve
+    // (now actively encouraged -- see the not_enough_to_decide rules in
+    // prompt.ts) could cost several units of a 5-a-day free bucket for what
+    // the user experiences as one decision. The real AI spend for this round
+    // is still charged (freeSpentEstimate/absoluteSpentEstimate are left
+    // alone) -- only the user-facing decision-count quota is refunded.
+    if (result.decisionStatus === "needs_one_question") {
+      if (deepQuotaInstallId) await refundDeepDecisionQuota(deepQuotaInstallId);
+      if (dailyQuota) {
+        await refundDailyQuota(dailyQuota.bucket, dailyQuota.installId);
+        if (quotaInfo) quotaInfo = { ...quotaInfo, used: Math.max(0, quotaInfo.used - 1) };
+      }
+    }
     // quotaInfo is only ever set for a complexity/Pro-state dailyQuotaFor()
     // actually governs -- "simple", and a Free "complex" decision, carry no
     // quota field at all, rather than a misleading one.
