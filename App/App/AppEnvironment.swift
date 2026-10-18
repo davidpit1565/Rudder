@@ -138,11 +138,17 @@ final class AppEnvironment {
     // MARK: - Decisions
 
     func save(_ record: DecisionRecord) {
+        let isFirstDecision = decisions.isEmpty
         do {
             try persistence.save(record)
             analytics.track(.decisionSaved)
             reload()
             refreshMemoryCandidate()
+            // Asked here, not on launch: the permission prompt follows the
+            // user's first real value from the app instead of preceding it.
+            if isFirstDecision {
+                Task { await NotificationService.shared.requestAuthorizationIfNeeded() }
+            }
         } catch {
             storageError = "I couldn't save that decision."
         }

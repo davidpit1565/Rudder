@@ -14,26 +14,63 @@ struct RootView: View {
 
     @State private var selection: Tab = .decide
     @State private var showingStartupError = false
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// UI tests run on a fresh simulator every time, so `hasSeenOnboarding`
+    /// starts false there exactly as it would for a real new user -- without
+    /// this, every existing UI test that expects to land on Home immediately
+    /// would instead land on the onboarding flow. Tests exercise actual
+    /// features, not the one-time first-launch screen, so a test scenario
+    /// skips it the same way it already skips other first-run states.
+    private var shouldShowOnboarding: Bool {
+        #if DEBUG
+        if UITestHarness.isActive { return false }
+        #endif
+        return !hasSeenOnboarding
+    }
 
     var body: some View {
-        TabView(selection: $selection) {
-            HomeView(onSeeAllDecisions: { selection = .decisions })
-                .tabItem { Label("Decide", systemImage: "arrow.triangle.branch") }
-                .tag(Tab.decide)
+        Group {
+            if !shouldShowOnboarding {
+                TabView(selection: $selection) {
+                    HomeView(onSeeAllDecisions: { selection = .decisions })
+                        .tabItem { Label("Decide", systemImage: "arrow.triangle.branch") }
+                        .tag(Tab.decide)
 
-            DecisionsView()
-                .tabItem { Label("Decisions", systemImage: "clock.arrow.circlepath") }
-                .tag(Tab.decisions)
+                    DecisionsView()
+                        .tabItem { Label("Decisions", systemImage: "clock.arrow.circlepath") }
+                        .tag(Tab.decisions)
 
-            ProfileView()
-                .tabItem { Label("Profile", systemImage: "person.crop.circle") }
-                .tag(Tab.profile)
+                    ProfileView()
+                        .tabItem { Label("Profile", systemImage: "person.crop.circle") }
+                        .tag(Tab.profile)
+                }
+                .onAppear { showingStartupError = startupError != nil }
+                .alert("Storage problem", isPresented: $showingStartupError) {
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text(startupError ?? "")
+                }
+            } else {
+                OnboardingView(onFinish: { hasSeenOnboarding = true })
+            }
         }
-        .onAppear { showingStartupError = startupError != nil }
-        .alert("Storage problem", isPresented: $showingStartupError) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(startupError ?? "")
+        // A reminder is scheduled on every backgrounding and cancelled on
+        // every foregrounding, so it only ever reaches the user after a real
+        // multi-day absence -- never while, or right after, they're already
+        // back in the app.
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .background:
+                NotificationService.shared.scheduleReengagementReminder()
+            case .active:
+                NotificationService.shared.cancelReengagementReminder()
+            case .inactive:
+                break
+            @unknown default:
+                break
+            }
         }
     }
 }
