@@ -133,6 +133,34 @@ struct FollowUpSection: View {
     }
 }
 
+/// Rounded on three corners, pinched on the fourth -- the one detail that
+/// reads as "chat bubble" rather than "card" at a glance.
+private struct ChatBubbleShape: Shape {
+    let isUser: Bool
+
+    func path(in rect: CGRect) -> Path {
+        let shape = UnevenRoundedRectangle(
+            topLeadingRadius: RudderSpacing.cornerRadius,
+            bottomLeadingRadius: isUser ? RudderSpacing.cornerRadius : RudderSpacing.xs,
+            bottomTrailingRadius: isUser ? RudderSpacing.xs : RudderSpacing.cornerRadius,
+            topTrailingRadius: RudderSpacing.cornerRadius,
+            style: .continuous
+        )
+        return shape.path(in: rect)
+    }
+}
+
+private extension View {
+    func chatBubble(isUser: Bool) -> some View {
+        padding(.horizontal, RudderSpacing.m)
+            .padding(.vertical, RudderSpacing.s)
+            .background(
+                isUser ? RudderColor.accent : RudderColor.surfaceRaised,
+                in: ChatBubbleShape(isUser: isUser)
+            )
+    }
+}
+
 private struct FollowUpExchangeRow: View {
     let exchange: FollowUpExchange
     let showsMemoryConsent: Bool
@@ -142,15 +170,23 @@ private struct FollowUpExchangeRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: RudderSpacing.s) {
-            Text(exchange.question)
-                .font(RudderFont.callout.weight(.medium))
-                .foregroundStyle(RudderColor.primaryText)
-                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Spacer(minLength: RudderSpacing.xl)
+                Text(exchange.question)
+                    .font(RudderFont.callout.weight(.medium))
+                    .foregroundStyle(RudderColor.onAccent)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .chatBubble(isUser: true)
+            }
 
-            Text(exchange.answer)
-                .font(RudderFont.callout)
-                .foregroundStyle(RudderColor.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Text(exchange.answer)
+                    .font(RudderFont.callout)
+                    .foregroundStyle(RudderColor.primaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .chatBubble(isUser: false)
+                Spacer(minLength: RudderSpacing.xl)
+            }
 
             if let prompt = exchange.suggestedNewDecisionPrompt {
                 SecondaryButton(title: "This needs a fresh look — start a new decision", systemImage: "arrow.right") {
