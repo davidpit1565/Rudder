@@ -32,11 +32,22 @@
 		  the device. Declaring it would overstate what this app does.
 		-->
 	</array>
-	<!--
-	  No required-reason API is called directly by this app. Verify with Xcode's
-	  privacy report at archive time, and add an entry here if a dependency adds one.
-	-->
 	<key>NSPrivacyAccessedAPITypes</key>
-	<array/>
+	<array>
+		<dict>
+			<!--
+			  UserDefaults.standard, used only for this app's own settings
+			  (Decision Memory on/off, the install identifier, a pending
+			  decision job to resume) -- never shared via an app group and
+			  never used to read data written by another app.
+			-->
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

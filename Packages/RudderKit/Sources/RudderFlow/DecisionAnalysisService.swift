@@ -7,7 +7,7 @@ import RudderCore
 /// What the app sends to its own backend. No credentials, no device identifiers —
 /// just the decision and what the user has already told us.
 public struct DecisionAnalysisRequest: Encodable, Sendable {
-    public struct Answer: Codable, Sendable {
+    public struct Answer: Codable, Sendable, Equatable {
         public let questionId: String
         public let answer: String
 

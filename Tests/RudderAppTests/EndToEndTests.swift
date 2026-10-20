@@ -261,7 +261,7 @@ private final class StubAnalysisService: DecisionAnalysisService, @unchecked Sen
         return failure
     }
 
-    func analyse(_ request: DecisionAnalysisRequest) async throws -> ValidatedAIResponse {
+    func analyse(_ request: DecisionAnalysisRequest, onPending: @escaping @Sendable (String) -> Void) async throws -> ValidatedAIResponse {
         if let failure = record(request) { throw failure }
 
         let response = AIDecisionResponse(
@@ -293,5 +293,11 @@ private final class StubAnalysisService: DecisionAnalysisService, @unchecked Sen
             )
         )
         return try AIResponseValidator.validate(response)
+    }
+
+    /// No end-to-end test exercises a pending job, so this is never expected
+    /// to be called.
+    func continueJob(_ jobId: String) async throws -> ValidatedAIResponse {
+        throw RudderServiceError.invalidResponse
     }
 }
