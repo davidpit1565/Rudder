@@ -1,12 +1,11 @@
 import SwiftUI
 import Foundation
 
-/// Three places, and no more: make a decision, look at past ones, manage what
-/// RUDDER knows about you.
+/// Two places, and no more: make a decision (and see every past one on the
+/// same screen), and manage what RUDDER knows about you.
 struct RootView: View {
     enum Tab: Hashable {
         case decide
-        case decisions
         case profile
     }
 
@@ -34,13 +33,9 @@ struct RootView: View {
         Group {
             if !shouldShowOnboarding {
                 TabView(selection: $selection) {
-                    HomeView(onSeeAllDecisions: { selection = .decisions })
+                    HomeView()
                         .tabItem { Label("Decide", systemImage: "arrow.triangle.branch") }
                         .tag(Tab.decide)
-
-                    DecisionsView()
-                        .tabItem { Label("Decisions", systemImage: "clock.arrow.circlepath") }
-                        .tag(Tab.decisions)
 
                     ProfileView()
                         .tabItem { Label("Profile", systemImage: "person.crop.circle") }

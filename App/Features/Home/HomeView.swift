@@ -3,9 +3,47 @@ import Foundation
 import RudderCore
 import RudderFlow
 
-/// One question, one field, one button. The home screen is not a dashboard.
+extension DecisionRecord {
+    /// Research goes out of date. After a couple of months, a decision that leaned
+    /// on current facts is worth a second look — without quietly rewriting it.
+    var isPotentiallyStale: Bool {
+        guard result.researchLevel != .none else { return false }
+        return Date().timeIntervalSince(createdAt) > 60 * 60 * 24 * 60
+    }
+
+    var shouldReview: Bool { needsReview || isPotentiallyStale }
+
+    /// Everything worth matching a search against.
+    ///
+    /// Short-circuits rather than building the list first: this runs for every
+    /// stored decision on every keystroke.
+    func matches(_ query: String) -> Bool {
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !needle.isEmpty else { return true }
+
+        func hit(_ candidate: String) -> Bool {
+            candidate.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+        }
+
+        if hit(title) || hit(prompt) || hit(result.understanding.restatement) { return true }
+        if hit(result.category.rawValue.replacingOccurrences(of: "_", with: " ")) { return true }
+        if result.options.contains(where: { hit($0.name) }) { return true }
+        return result.criteria.contains(where: { hit($0.name) })
+    }
+}
+
+/// One question, one field, one button, and -- below it -- every decision
+/// already made. Merged from two separate tabs into one continuous screen,
+/// the way a chat app puts its composer and its conversation history on the
+/// same page instead of behind a second tab.
 struct HomeView: View {
-    var onSeeAllDecisions: () -> Void = {}
+    enum DecisionFilter: String, CaseIterable, Identifiable {
+        case all = "All"
+        case recent = "Recent"
+        case needsReview = "Needs review"
+
+        var id: String { rawValue }
+    }
 
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.scenePhase) private var scenePhase
@@ -26,6 +64,8 @@ struct HomeView: View {
     /// people never open this.
     @State private var tierChoice: TierChoice = .auto
     @State private var showingOptions = false
+    @State private var decisionsQuery = ""
+    @State private var decisionsFilter: DecisionFilter = .all
 
     private enum TierChoice: Hashable {
         case auto, simple, medium, complex
@@ -46,6 +86,19 @@ struct HomeView: View {
 
     private var canDecide: Bool { trimmedPrompt.count >= 3 }
 
+    private var filteredDecisions: [DecisionRecord] {
+        let base = environment.visibleDecisions.filter { $0.matches(decisionsQuery) }
+        switch decisionsFilter {
+        case .all:
+            return base
+        case .recent:
+            let cutoff = Date().addingTimeInterval(-60 * 60 * 24 * 30)
+            return base.filter { $0.createdAt >= cutoff }
+        case .needsReview:
+            return base.filter(\.shouldReview)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -56,7 +109,7 @@ struct HomeView: View {
                     if !isInputFocused {
                         quotaSummary
                         examples
-                        recentDecisions
+                        decisionsSection
                     }
                 }
                 .screenPadding()
@@ -326,7 +379,7 @@ struct HomeView: View {
     }
 
     /// A glance at today's usage without opening "Options" -- never shown
-    /// while the keyboard is up, same as the examples and recent decisions below it.
+    /// while the keyboard is up, same as the examples and decisions below it.
     @ViewBuilder
     private var quotaSummary: some View {
         if let status = environment.quotaStatus {
@@ -389,38 +442,60 @@ struct HomeView: View {
         }
     }
 
+    /// Everything already decided, on the same screen as the box that starts
+    /// the next one -- no second tab to find it in. Hidden while the keyboard
+    /// is up, same as `examples` above it.
     @ViewBuilder
-    private var recentDecisions: some View {
-        let recent = Array(environment.visibleDecisions.prefix(3))
-
+    private var decisionsSection: some View {
         VStack(alignment: .leading, spacing: RudderSpacing.s) {
-            HStack {
-                Text("Recent decisions")
-                    .font(RudderFont.footnote.weight(.medium))
-                    .foregroundStyle(RudderColor.tertiaryText)
-                Spacer()
-                if !recent.isEmpty {
-                    Button("See all", action: onSeeAllDecisions)
-                        .font(RudderFont.footnote)
-                        .frame(minHeight: RudderSpacing.minimumTouchTarget)
-                }
-            }
+            Text("Your decisions")
+                .font(RudderFont.footnote.weight(.medium))
+                .foregroundStyle(RudderColor.tertiaryText)
 
-            if recent.isEmpty {
+            if environment.decisions.isEmpty {
                 EmptyStateView(
                     title: "Your decisions will appear here.",
-                    message: nil,
+                    message: "Everything you decide is saved on this device.",
                     systemImage: "square.stack.3d.up"
                 )
             } else {
-                ForEach(recent) { record in
-                    NavigationLink {
-                        DecisionDetailsView(record: record)
-                    } label: {
-                        DecisionRow(record: record)
+                TextField("Search decisions", text: $decisionsQuery)
+                    .font(RudderFont.body)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .padding(RudderSpacing.m)
+                    .background(RudderColor.surfaceRaised)
+                    .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous))
+
+                GlassSegmentedControl(
+                    options: DecisionFilter.allCases,
+                    label: { $0.rawValue },
+                    selection: $decisionsFilter
+                )
+                .accessibilityLabel("Filter")
+
+                if filteredDecisions.isEmpty {
+                    EmptyStateView(
+                        title: "Nothing here",
+                        message: decisionsQuery.isEmpty
+                            ? "No decisions match this filter."
+                            : "No decisions match “\(decisionsQuery)”.",
+                        systemImage: "magnifyingglass"
+                    )
+                } else {
+                    ForEach(filteredDecisions) { record in
+                        NavigationLink {
+                            DecisionDetailsView(record: record)
+                        } label: {
+                            DecisionRow(record: record)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier(RudderID.historyRow)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier(RudderID.historyRow)
+                }
+
+                if environment.hasHiddenHistory {
+                    HiddenHistoryNotice(hidden: environment.decisions.count - FeatureAccess.freeHistoryLimit)
                 }
             }
         }
@@ -510,6 +585,29 @@ extension Date {
         case 2...6: return "\(days) days ago"
         default:
             return formatted(.dateTime.month(.abbreviated).day())
+        }
+    }
+}
+
+private struct HiddenHistoryNotice: View {
+    let hidden: Int
+    @State private var showingPaywall = false
+
+    var body: some View {
+        RudderCard {
+            VStack(alignment: .leading, spacing: RudderSpacing.s) {
+                Text("\(hidden) older \(hidden == 1 ? "decision is" : "decisions are") still saved on this device")
+                    .font(RudderFont.callout.weight(.medium))
+                    .foregroundStyle(RudderColor.primaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Pro shows your full history. Nothing has been deleted.")
+                    .font(RudderFont.footnote)
+                    .foregroundStyle(RudderColor.secondaryText)
+                SecondaryButton(title: "See Pro") { showingPaywall = true }
+            }
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView(context: .history)
         }
     }
 }
