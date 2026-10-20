@@ -304,34 +304,18 @@ private struct OutcomeTile: View {
     let count: Int
     let total: Int
 
-    private var colour: Color {
-        switch rating {
-        case .great: return RudderColor.strong
-        case .mixed: return RudderColor.moderate
-        case .notGreat: return RudderColor.unclear
-        }
-    }
-
-    private var label: String {
-        switch rating {
-        case .great: return "Great"
-        case .mixed: return "Mixed"
-        case .notGreat: return "Not great"
-        }
-    }
-
     var body: some View {
         VStack(spacing: RudderSpacing.xs) {
             Text("\(count)")
                 .font(RudderFont.title.weight(.semibold))
-                .foregroundStyle(colour)
-            Text(label)
+                .foregroundStyle(rating.tint)
+            Text(rating.title)
                 .font(RudderFont.caption)
                 .foregroundStyle(RudderColor.secondaryText)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label): \(count) of \(total)")
+        .accessibilityLabel("\(rating.title): \(count) of \(total)")
     }
 }
 

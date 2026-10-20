@@ -336,6 +336,35 @@ extension DecisionCategory {
     }
 }
 
+extension Outcome.Rating {
+    /// One mapping, shared by the outcome sheet, the decision detail screen
+    /// and the Insights breakdown -- so "great" always means the same word,
+    /// icon and colour wherever it shows up.
+    var title: String {
+        switch self {
+        case .great: return "Great"
+        case .mixed: return "Mixed"
+        case .notGreat: return "Not great"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .great: return "hand.thumbsup.fill"
+        case .mixed: return "equal.circle.fill"
+        case .notGreat: return "hand.thumbsdown.fill"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .great: return RudderColor.strong
+        case .mixed: return RudderColor.moderate
+        case .notGreat: return RudderColor.unclear
+        }
+    }
+}
+
 extension DecisionComplexity {
     /// User-facing tier names -- "Quick/Standard/Deep" is how RUDDER explains
     /// its own research depth to the user, kept separate from the internal
