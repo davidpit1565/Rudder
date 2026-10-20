@@ -11,7 +11,10 @@ enum RudderColor {
 
     static let background = Color(
         light: Color(red: 0.98, green: 0.98, blue: 0.97),
-        dark: Color(red: 0.05, green: 0.05, blue: 0.06)
+        // Near-black rather than dark grey -- it's what makes `surface` and
+        // `surfaceRaised` actually read as raised instead of all blending
+        // into one grey field.
+        dark: Color(red: 0.01, green: 0.01, blue: 0.015)
     )
 
     static let surface = Color(
