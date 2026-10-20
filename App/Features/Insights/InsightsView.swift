@@ -116,15 +116,32 @@ struct InsightsView: View {
         VStack(alignment: .leading, spacing: RudderSpacing.s) {
             SectionHeader(title: "Your decisions")
 
+            if let rate = followedRecommendationRate {
+                RudderCard {
+                    HStack(spacing: RudderSpacing.m) {
+                        RingStat(
+                            value: rate,
+                            numeratorLabel: "\(Int((rate * 100).rounded()))%"
+                        )
+                        VStack(alignment: .leading, spacing: RudderSpacing.xs) {
+                            Text("You follow your own advice")
+                                .font(RudderFont.callout.weight(.semibold))
+                                .foregroundStyle(RudderColor.primaryText)
+                            Text("\(decisionsWithKnownFollowThrough.filter { $0.followedRecommendation == true }.count) of \(decisionsWithKnownFollowThrough.count) decisions went with RUDDER's recommendation")
+                                .font(RudderFont.footnote)
+                                .foregroundStyle(RudderColor.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+
             RudderCard {
                 HStack(spacing: RudderSpacing.s) {
                     statTile(value: "\(environment.decisions.count)", label: "Total")
                     tileDivider
                     statTile(value: "\(decisionsThisMonth)", label: "This month")
-                    if let rate = followedRecommendationRate {
-                        tileDivider
-                        statTile(value: "\(Int((rate * 100).rounded()))%", label: "Followed advice")
-                    }
                 }
             }
 
@@ -137,6 +154,7 @@ struct InsightsView: View {
                         VStack(spacing: RudderSpacing.s) {
                             ForEach(categoryCounts, id: \.category) { entry in
                                 CategoryRow(
+                                    icon: entry.category.icon,
                                     label: entry.category.displayName,
                                     count: entry.count,
                                     fraction: Double(entry.count) / Double(environment.decisions.count)
@@ -249,13 +267,15 @@ struct InsightsView: View {
 }
 
 private struct CategoryRow: View {
+    let icon: String
     let label: String
     let count: Int
     let fraction: Double
 
     var body: some View {
         VStack(alignment: .leading, spacing: RudderSpacing.xs) {
-            HStack {
+            HStack(spacing: RudderSpacing.s) {
+                IconBadge(systemImage: icon, size: 32)
                 Text(label)
                     .font(RudderFont.callout)
                     .foregroundStyle(RudderColor.primaryText)
@@ -366,6 +386,21 @@ private extension DecisionCategory {
         case .technology: return "Technology"
         case .lifePlanning: return "Life planning"
         case .other: return "Other"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .purchase: return "cart.fill"
+        case .career: return "briefcase.fill"
+        case .education: return "graduationcap.fill"
+        case .travel: return "airplane"
+        case .home: return "house.fill"
+        case .subscription: return "repeat.circle.fill"
+        case .finance: return "banknote.fill"
+        case .technology: return "desktopcomputer"
+        case .lifePlanning: return "signpost.right.fill"
+        case .other: return "ellipsis.circle.fill"
         }
     }
 }

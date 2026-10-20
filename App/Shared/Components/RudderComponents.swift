@@ -108,6 +108,54 @@ struct SectionHeader: View {
     }
 }
 
+/// A small icon container tinted by its own colour rather than sitting on a
+/// neutral grey square -- the badge's wash matches the icon, so a row of
+/// these reads as a set of distinct things rather than one repeated shape.
+struct IconBadge: View {
+    let systemImage: String
+    var tint: Color = RudderColor.accent
+    var size: CGFloat = 40
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: size * 0.42, weight: .semibold))
+            .foregroundStyle(tint)
+            .frame(width: size, height: size)
+            .background(tint.opacity(0.18), in: RoundedRectangle(cornerRadius: size * 0.28, style: .continuous))
+            .accessibilityHidden(true)
+    }
+}
+
+/// A circular read on one ratio -- `value` is drawn as the filled arc, and
+/// the raw fraction sits inside it as text, so the shape and the number
+/// always agree.
+struct RingStat: View {
+    let value: Double
+    let numeratorLabel: String
+    var tint: Color = RudderColor.strong
+    var diameter: CGFloat = 72
+    var lineWidth: CGFloat = 6
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(RudderColor.surfaceRaised, lineWidth: lineWidth)
+            Circle()
+                .trim(from: 0, to: max(0, min(1, value)))
+                .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Text(numeratorLabel)
+                .font(RudderFont.subheadline.weight(.semibold))
+                .foregroundStyle(RudderColor.primaryText)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+                .padding(.horizontal, 4)
+        }
+        .frame(width: diameter, height: diameter)
+        .accessibilityHidden(true)
+    }
+}
+
 // MARK: - Decision strength
 
 /// Strength is communicated by shape, word and colour together — never colour alone.
