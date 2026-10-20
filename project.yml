@@ -101,7 +101,7 @@ targets:
         # archive. This is a second, independent source for the same number
         # (XcodeGen inlines it here rather than referencing the xcconfig for
         # this target), so bump both together, by hand, every time.
-        CURRENT_PROJECT_VERSION: 20
+        CURRENT_PROJECT_VERSION: 21
         INFOPLIST_FILE: Config/RudderWidgetExtension-Info.plist
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: Config/RudderWidgetExtension.entitlements
