@@ -31,7 +31,6 @@
 		75CCF1272437CE7BD5752D44 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFB5EC4557070D2961A97323 /* AppEnvironment.swift */; };
 		85C05B353439F5665FB51B5B /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20CFBBE9E41FD0C86FD61988 /* HomeView.swift */; };
 		9163E5ABBA7F8C8F0327D3AB /* PersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F112DAB7643C06571B0F5DC0 /* PersistenceService.swift */; };
-		9306A4115F934433A11BFBD1 /* DecisionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 186B3CAFA3C552ECEF90EA4C /* DecisionsView.swift */; };
 		B659C317CD99507F82C67362 /* RudderFlow in Frameworks */ = {isa = PBXBuildFile; productRef = D4AAC8F343FD5B4ED32B3AA6 /* RudderFlow */; };
 		B8C1A13D88C7F57DA4CBADBA /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3422E089C01C33D7B7C4EC14 /* PaywallView.swift */; };
 		BD240AC1ED4FE36702C3DBB2 /* RecommendationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A218437E08E71944680822E /* RecommendationView.swift */; };
@@ -91,7 +90,6 @@
 
 /* Begin PBXFileReference section */
 		01E2A801CA49EBAF38EDF27D /* RudderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RudderApp.swift; sourceTree = "<group>"; };
-		186B3CAFA3C552ECEF90EA4C /* DecisionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecisionsView.swift; sourceTree = "<group>"; };
 		20CFBBE9E41FD0C86FD61988 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		20D540AC56EB3EA5E0B11DCD /* EntitlementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntitlementTests.swift; sourceTree = "<group>"; };
 		2C959B0BD4C2EA15F24A61D7 /* PersistenceServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceServiceTests.swift; sourceTree = "<group>"; };
@@ -251,14 +249,6 @@
 			path = App;
 			sourceTree = "<group>";
 		};
-		6256581D6036CB34D8AF62B5 /* Decisions */ = {
-			isa = PBXGroup;
-			children = (
-				186B3CAFA3C552ECEF90EA4C /* DecisionsView.swift */,
-			);
-			path = Decisions;
-			sourceTree = "<group>";
-		};
 		668EC6EC4CD64115102AD896 /* Home */ = {
 			isa = PBXGroup;
 			children = (
@@ -332,7 +322,6 @@
 			isa = PBXGroup;
 			children = (
 				02F2CFBBA0F807B449970372 /* DecisionDetails */,
-				6256581D6036CB34D8AF62B5 /* Decisions */,
 				668EC6EC4CD64115102AD896 /* Home */,
 				D2973A58C8780D8D893610C8 /* NewDecision */,
 				1FDBD242EB8635DB0557C29E /* Onboarding */,
@@ -556,7 +545,6 @@
 				DAE01BFE94A84AF84F8F33C8 /* DecisionFlowView.swift in Sources */,
 				387455A4ED8E69341ED1B360 /* FollowUpSection.swift in Sources */,
 				F30E2914E5BE8BCD0B8C046B /* StagedWorkingView.swift in Sources */,
-				9306A4115F934433A11BFBD1 /* DecisionsView.swift in Sources */,
 				85C05B353439F5665FB51B5B /* HomeView.swift in Sources */,
 				236410532F9C300230C4E051 /* InstallIdentity.swift in Sources */,
 				B8C1A13D88C7F57DA4CBADBA /* PaywallView.swift in Sources */,

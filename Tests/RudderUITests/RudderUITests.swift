@@ -191,12 +191,11 @@ final class RudderUITests: XCTestCase {
         XCTAssertEqual(decisionInput.value as? String, "Which laptop should I buy?")
     }
 
-    func testThereAreExactlyThreePlaces() {
+    func testThereAreExactlyTwoPlaces() {
         launch()
         XCTAssertTrue(app.tabBars.buttons["Decide"].waitForExistence(timeout: 20))
-        XCTAssertTrue(app.tabBars.buttons["Decisions"].exists)
         XCTAssertTrue(app.tabBars.buttons["Profile"].exists)
-        XCTAssertEqual(app.tabBars.buttons.count, 3, "No chat tab, no dashboard")
+        XCTAssertEqual(app.tabBars.buttons.count, 2, "Decisions lives on the Decide screen now, not its own tab")
     }
 
     // MARK: The whole flow
@@ -221,8 +220,7 @@ final class RudderUITests: XCTestCase {
 
         app.buttons[ID.doneWithDecision].tap()
 
-        // It is in history, with what was chosen and how strong it was.
-        app.tabBars.buttons["Decisions"].tap()
+        // It is in history, right there on the same screen -- no tab to switch to.
         let row = historyRows.firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10), "The decision should be in history")
         XCTAssertTrue(row.label.contains("MacBook Air vs MacBook Pro"), "Got: \(row.label)")
@@ -376,7 +374,6 @@ final class RudderUITests: XCTestCase {
         app.terminate()
         launch(scenario: "straightforward", reset: false)
 
-        app.tabBars.buttons["Decisions"].tap()
         XCTAssertTrue(
             historyRows.firstMatch.waitForExistence(timeout: 20),
             "A saved decision must still be there after a restart"
@@ -391,7 +388,6 @@ final class RudderUITests: XCTestCase {
         XCTAssertTrue(app.buttons[ID.doneWithDecision].waitForExistence(timeout: 10))
         app.buttons[ID.doneWithDecision].tap()
 
-        app.tabBars.buttons["Decisions"].tap()
         XCTAssertTrue(historyRows.firstMatch.waitForExistence(timeout: 10))
         historyRows.firstMatch.tap()
 
@@ -420,7 +416,7 @@ final class RudderUITests: XCTestCase {
         app.buttons["Delete everything"].tap()
         app.buttons["Delete"].tap()
 
-        app.tabBars.buttons["Decisions"].tap()
+        app.tabBars.buttons["Decide"].tap()
         waitForText("Your decisions will appear here.", timeout: 10)
     }
 
@@ -428,7 +424,6 @@ final class RudderUITests: XCTestCase {
 
     func testEmptyHistoryExplainsItself() {
         launch()
-        app.tabBars.buttons["Decisions"].tap()
         waitForText("Your decisions will appear here.", timeout: 20)
     }
 
