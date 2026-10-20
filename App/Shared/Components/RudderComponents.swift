@@ -317,6 +317,25 @@ struct InlineNotice: View {
     }
 }
 
+extension DecisionCategory {
+    /// A single consistent icon per category -- used anywhere a decision or a
+    /// category breakdown needs a quick visual anchor, not just a label.
+    var icon: String {
+        switch self {
+        case .purchase: return "cart.fill"
+        case .career: return "briefcase.fill"
+        case .education: return "graduationcap.fill"
+        case .travel: return "airplane"
+        case .home: return "house.fill"
+        case .subscription: return "repeat.circle.fill"
+        case .finance: return "banknote.fill"
+        case .technology: return "desktopcomputer"
+        case .lifePlanning: return "signpost.right.fill"
+        case .other: return "ellipsis.circle.fill"
+        }
+    }
+}
+
 extension DecisionComplexity {
     /// User-facing tier names -- "Quick/Standard/Deep" is how RUDDER explains
     /// its own research depth to the user, kept separate from the internal

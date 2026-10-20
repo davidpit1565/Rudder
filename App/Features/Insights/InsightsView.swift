@@ -388,19 +388,4 @@ private extension DecisionCategory {
         case .other: return "Other"
         }
     }
-
-    var icon: String {
-        switch self {
-        case .purchase: return "cart.fill"
-        case .career: return "briefcase.fill"
-        case .education: return "graduationcap.fill"
-        case .travel: return "airplane"
-        case .home: return "house.fill"
-        case .subscription: return "repeat.circle.fill"
-        case .finance: return "banknote.fill"
-        case .technology: return "desktopcomputer"
-        case .lifePlanning: return "signpost.right.fill"
-        case .other: return "ellipsis.circle.fill"
-        }
-    }
 }

@@ -589,26 +589,30 @@ struct DecisionRow: View {
 
     var body: some View {
         RudderCard {
-            VStack(alignment: .leading, spacing: RudderSpacing.xs) {
-                Text(record.title)
-                    .font(RudderFont.callout.weight(.semibold))
-                    .foregroundStyle(RudderColor.primaryText)
-                    .multilineTextAlignment(.leading)
+            HStack(alignment: .top, spacing: RudderSpacing.s) {
+                IconBadge(systemImage: record.result.category.icon)
 
-                HStack(spacing: RudderSpacing.s) {
-                    Text(subtitle)
-                        .font(RudderFont.footnote)
-                        .foregroundStyle(RudderColor.secondaryText)
-                    Spacer(minLength: RudderSpacing.s)
-                    Text(record.createdAt.decideRelativeDescription)
-                        .font(RudderFont.footnote)
-                        .foregroundStyle(RudderColor.tertiaryText)
-                }
+                VStack(alignment: .leading, spacing: RudderSpacing.xs) {
+                    Text(record.title)
+                        .font(RudderFont.callout.weight(.semibold))
+                        .foregroundStyle(RudderColor.primaryText)
+                        .multilineTextAlignment(.leading)
 
-                if record.shouldReview {
-                    Text("Things may have changed")
-                        .font(RudderFont.caption)
-                        .foregroundStyle(RudderColor.moderate)
+                    HStack(spacing: RudderSpacing.s) {
+                        Text(subtitle)
+                            .font(RudderFont.footnote)
+                            .foregroundStyle(RudderColor.secondaryText)
+                        Spacer(minLength: RudderSpacing.s)
+                        Text(record.createdAt.decideRelativeDescription)
+                            .font(RudderFont.footnote)
+                            .foregroundStyle(RudderColor.tertiaryText)
+                    }
+
+                    if record.shouldReview {
+                        Text("Things may have changed")
+                            .font(RudderFont.caption)
+                            .foregroundStyle(RudderColor.moderate)
+                    }
                 }
             }
         }
