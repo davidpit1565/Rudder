@@ -104,6 +104,7 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: RudderSpacing.l) {
                     header
+                    pendingJobBanner
                     input
                     options
                     if !isInputFocused {
@@ -149,7 +150,7 @@ struct HomeView: View {
         }
         .task { await environment.refreshQuotaStatus() }
         .fullScreenCover(item: $activeDecision) { active in
-            DecisionFlowView(prompt: active.prompt, complexityOverride: active.complexityOverride)
+            DecisionFlowView(prompt: active.prompt, complexityOverride: active.complexityOverride, resumingJob: active.resumingJob)
         }
         .onChange(of: activeDecision) { oldValue, newValue in
             // Returning from a finished decision should start the next one with
@@ -198,6 +199,43 @@ struct HomeView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    /// The one visible trace of a decision still being analyzed from before
+    /// the app was last closed -- without this, that job would just sit in
+    /// Redis until its jobId was polled again, which nothing would ever do.
+    /// Tapping it resumes the same DecisionFlowView flow, polling instead of
+    /// starting over.
+    @ViewBuilder
+    private var pendingJobBanner: some View {
+        if let pending = environment.pendingDecisionJob {
+            Button {
+                activeDecision = ActiveDecision(prompt: pending.prompt, resumingJob: pending)
+            } label: {
+                HStack(spacing: RudderSpacing.s) {
+                    ProgressView()
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Still working on your decision")
+                            .font(RudderFont.callout.weight(.medium))
+                            .foregroundStyle(RudderColor.primaryText)
+                        Text(pending.prompt)
+                            .font(RudderFont.footnote)
+                            .foregroundStyle(RudderColor.secondaryText)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: RudderSpacing.s)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(RudderColor.tertiaryText)
+                }
+                .padding(RudderSpacing.m)
+                .frame(minHeight: RudderSpacing.minimumTouchTarget)
+                .background(RudderColor.surfaceRaised)
+                .clipShape(RoundedRectangle(cornerRadius: RudderSpacing.cornerRadius, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Reopens this decision and checks whether it's finished")
+        }
     }
 
     private var input: some View {
@@ -530,6 +568,10 @@ struct ActiveDecision: Identifiable, Equatable {
     /// Set only when the user picked a tier manually in the "Options"
     /// disclosure -- nil is the untouched, auto-classified path.
     var complexityOverride: DecisionComplexity? = nil
+    /// Set only when this decision is being picked back up after the app was
+    /// closed while it was still running -- DecisionFlowView resumes polling
+    /// its jobId instead of starting a fresh request for `prompt`.
+    var resumingJob: PendingDecisionJob? = nil
 }
 
 /// One line of history: what was decided, what was chosen, how strong it was.

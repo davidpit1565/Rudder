@@ -10,6 +10,10 @@ struct DecisionFlowView: View {
     /// Set only from Home's "Options" disclosure -- nil (the default) is the
     /// untouched, auto-classified path every other call site still uses.
     var complexityOverride: DecisionComplexity? = nil
+    /// Set only when reopening a decision that was still running when the app
+    /// was last closed (see HomeView's pendingJobBanner) -- resumes polling
+    /// its jobId instead of starting a brand new request for `prompt`.
+    var resumingJob: PendingDecisionJob? = nil
 
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
@@ -41,7 +45,11 @@ struct DecisionFlowView: View {
             guard coordinator == nil else { return }
             let new = environment.makeCoordinator()
             coordinator = new
-            new.start(prompt: prompt, complexityOverride: complexityOverride)
+            if let resumingJob {
+                new.resume(from: resumingJob)
+            } else {
+                new.start(prompt: prompt, complexityOverride: complexityOverride)
+            }
         }
         // Asked once, after a decision is saved, and only ever with a yes/no.
         .sheet(isPresented: $showingMemoryConsent) {

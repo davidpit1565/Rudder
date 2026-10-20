@@ -53,6 +53,7 @@ public final class DecisionCoordinator {
     private var answers: [DecisionAnalysisRequest.Answer] = []
     private var classification: DecisionClassifier.Classification?
     private var budget: DecisionBudget?
+    private var complexityOverride: DecisionComplexity?
     private var researchAttempted = false
     private var modelCallsUsed = 0
     private var task: Task<Void, Never>?
@@ -63,15 +64,27 @@ public final class DecisionCoordinator {
     private let service: DecisionAnalysisService
     private let analytics: AnalyticsService
     private let memoryProvider: @MainActor () -> [MemoryEntry]
+    /// Called the moment a request is slow enough to come back as a job in
+    /// progress rather than a finished result -- the owner's only chance to
+    /// persist it somewhere that survives this process ending (see
+    /// `resume(from:)`). Never called for a request that finishes normally.
+    private let onPendingJob: @MainActor (PendingDecisionJob) -> Void
+    /// Called once a pending job reaches any outcome (success or failure) --
+    /// whatever `onPendingJob` persisted for it should be cleared.
+    private let onJobResolved: @MainActor () -> Void
 
     public init(
         service: DecisionAnalysisService,
         analytics: AnalyticsService = NoOpAnalyticsService(),
-        memoryProvider: @escaping @MainActor () -> [MemoryEntry] = { [] }
+        memoryProvider: @escaping @MainActor () -> [MemoryEntry] = { [] },
+        onPendingJob: @escaping @MainActor (PendingDecisionJob) -> Void = { _ in },
+        onJobResolved: @escaping @MainActor () -> Void = {}
     ) {
         self.service = service
         self.analytics = analytics
         self.memoryProvider = memoryProvider
+        self.onPendingJob = onPendingJob
+        self.onJobResolved = onJobResolved
     }
 
     public var isWorking: Bool {
@@ -105,8 +118,50 @@ public final class DecisionCoordinator {
         cancel()
         reset()
         prompt = trimmed
+        self.complexityOverride = complexityOverride
+        let classification = applyClassificationAndBudget(prompt: trimmed, complexityOverride: complexityOverride)
 
-        var classification = DecisionClassifier.classify(trimmed)
+        analytics.track(
+            .decisionStarted,
+            properties: [
+                .category: classification.category.rawValue,
+                .complexity: classification.complexity.rawValue
+            ]
+        )
+
+        advance(to: .understanding)
+        run()
+    }
+
+    /// Picks a decision's polling back up after this process -- not just this
+    /// `DecisionCoordinator` instance -- was gone when the job it started
+    /// last reported in. `pending` is whatever `onPendingJob` was handed
+    /// before this run ended; the request itself is never resent (the server
+    /// already has it, and already charged for it once), only the same jobId
+    /// polled again. `complexityOverride`/`answers`/`questionsAsked` are
+    /// restored so the coordinator behaves identically to the run that
+    /// started this job -- whatever reads `.complexity` or counts questions
+    /// once the result lands sees the same thing it would have, uninterrupted.
+    public func resume(from pending: PendingDecisionJob) {
+        cancel()
+        reset()
+        prompt = pending.prompt
+        answers = pending.answers
+        questionsAsked = pending.questionsAsked
+        decisionID = pending.decisionID
+        complexityOverride = pending.complexityOverride
+        applyClassificationAndBudget(prompt: pending.prompt, complexityOverride: pending.complexityOverride)
+
+        advance(to: .understanding)
+        runContinuation(jobId: pending.jobId)
+    }
+
+    @discardableResult
+    private func applyClassificationAndBudget(
+        prompt: String,
+        complexityOverride: DecisionComplexity?
+    ) -> DecisionClassifier.Classification {
+        var classification = DecisionClassifier.classify(prompt)
         if let complexityOverride, complexityOverride != classification.complexity {
             let researchLevel: ResearchLevel
             switch complexityOverride {
@@ -127,17 +182,7 @@ public final class DecisionCoordinator {
             category: classification.category,
             requestedLevel: classification.researchLevel
         )
-
-        analytics.track(
-            .decisionStarted,
-            properties: [
-                .category: classification.category.rawValue,
-                .complexity: classification.complexity.rawValue
-            ]
-        )
-
-        advance(to: .understanding)
-        run()
+        return classification
     }
 
     public func answer(_ text: String, to question: QuestionCandidate) {
@@ -187,6 +232,7 @@ public final class DecisionCoordinator {
         phase = .idle
         activeResearchLevel = nil
         isSubmittingAnswer = false
+        complexityOverride = nil
     }
 
     private func run() {
@@ -194,6 +240,15 @@ public final class DecisionCoordinator {
         beginBackgroundTaskIfNeeded()
         task = Task { [weak self] in
             await self?.performAnalysis()
+            self?.endBackgroundTaskIfNeeded()
+        }
+    }
+
+    private func runContinuation(jobId: String) {
+        task?.cancel()
+        beginBackgroundTaskIfNeeded()
+        task = Task { [weak self] in
+            await self?.performContinuation(jobId: jobId)
             self?.endBackgroundTaskIfNeeded()
         }
     }
@@ -254,13 +309,49 @@ public final class DecisionCoordinator {
         modelCallsUsed += 1
 
         do {
-            let validated = try await service.analyse(request)
+            let validated = try await service.analyse(request, onPending: { [weak self] jobId in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.onPendingJob(PendingDecisionJob(
+                        jobId: jobId,
+                        prompt: self.prompt,
+                        answers: self.answers,
+                        questionsAsked: self.questionsAsked,
+                        complexityOverride: self.complexityOverride,
+                        decisionID: self.decisionID
+                    ))
+                }
+            })
+            onJobResolved()
             guard !Task.isCancelled else { return }
             handle(validated)
         } catch let error as RudderServiceError {
+            onJobResolved()
             guard error != .cancelled, !Task.isCancelled else { return }
             fail(with: error)
         } catch {
+            onJobResolved()
+            guard !Task.isCancelled else { return }
+            fail(with: .unknown)
+        }
+    }
+
+    /// Mirrors `performAnalysis()` for a job resumed via `resume(from:)`: no
+    /// new request is built or sent, just the same jobId polled again via
+    /// `continueJob(_:)` until it resolves.
+    private func performContinuation(jobId: String) async {
+        modelCallsUsed += 1
+        do {
+            let validated = try await service.continueJob(jobId)
+            onJobResolved()
+            guard !Task.isCancelled else { return }
+            handle(validated)
+        } catch let error as RudderServiceError {
+            onJobResolved()
+            guard error != .cancelled, !Task.isCancelled else { return }
+            fail(with: error)
+        } catch {
+            onJobResolved()
             guard !Task.isCancelled else { return }
             fail(with: .unknown)
         }
