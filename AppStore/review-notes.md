@@ -21,9 +21,10 @@ HOW TO SEE THE FULL FLOW
 4. "Make my decision" saves the choice. "Choose something else" shows the other
    options — picking one is recorded without any attempt to change the user's mind.
 5. The full decision history is on the same Decide tab, below the input, with
-   a search field and an All/Recent/Needs review filter. The Profile tab holds
-   learned preferences and the controls to delete decisions, memory, outcomes,
-   or everything.
+   a search field and an All/Recent/Needs review filter. The Insights tab shows
+   statistics across past decisions and the learned preferences (Decision
+   Memory). The Profile tab holds the subscription and the controls to delete
+   decisions, memory, outcomes, or everything.
 
 SUBSCRIPTION
 RUDDER Pro (monthly com.davidpitchkhadze.rudder.pro.monthly, annual com.davidpitchkhadze.rudder.pro.annual)

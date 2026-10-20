@@ -8,15 +8,6 @@ struct ProfileView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var paywallContext: PaywallView.Context?
     @State private var confirmation: DataConfirmation?
-    @State private var memorizeAllSession: MemorizeAllSession?
-    @State private var showingNoNewPatterns = false
-
-    /// Wraps a scan's results so `.sheet(item:)` can present them -- a plain
-    /// `[MemoryCandidate]` array has nothing of its own to key the sheet on.
-    private struct MemorizeAllSession: Identifiable {
-        let id = UUID()
-        let candidates: [MemoryCandidate]
-    }
 
     private enum DataConfirmation: String, Identifiable {
         case memory
@@ -51,7 +42,6 @@ struct ProfileView: View {
                 VStack(alignment: .leading, spacing: RudderSpacing.xl) {
                     subscriptionSection
                     usageSection
-                    memorySection
                     dataSection
                     aboutSection
                 }
@@ -63,17 +53,6 @@ struct ProfileView: View {
             .task { await environment.refreshQuotaStatus() }
             .sheet(item: $paywallContext) { context in
                 PaywallView(context: context)
-            }
-            .sheet(item: $memorizeAllSession) { session in
-                MemorizeAllSheet(
-                    candidates: session.candidates,
-                    onRemember: { selectedKeys in
-                        let chosen = session.candidates.filter { selectedKeys.contains($0.key) }
-                        environment.acceptMemoryCandidates(chosen)
-                        memorizeAllSession = nil
-                    },
-                    onClose: { memorizeAllSession = nil }
-                )
             }
             .alert(
                 confirmation?.title ?? "",
@@ -88,20 +67,6 @@ struct ProfileView: View {
             } message: { item in
                 Text(item.message)
             }
-            .alert("Nothing new found", isPresented: $showingNoNewPatterns) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("I haven't noticed any new patterns across your decisions yet.")
-            }
-        }
-    }
-
-    private func startMemorizeAllScan() {
-        let candidates = environment.allMemoryCandidates()
-        if candidates.isEmpty {
-            showingNoNewPatterns = true
-        } else {
-            memorizeAllSession = MemorizeAllSession(candidates: candidates)
         }
     }
 
@@ -248,67 +213,6 @@ struct ProfileView: View {
         }
     }
 
-    private var memorySection: some View {
-        VStack(alignment: .leading, spacing: RudderSpacing.s) {
-            SectionHeader(
-                title: "Decision Memory",
-                subtitle: "Preferences RUDDER noticed in decisions you actually made. Nothing is stored without your say-so."
-            )
-
-            if !environment.isPro {
-                RudderCard {
-                    VStack(alignment: .leading, spacing: RudderSpacing.s) {
-                        Text("Decision Memory is part of Pro.")
-                            .font(RudderFont.callout)
-                            .foregroundStyle(RudderColor.primaryText)
-                        SecondaryButton(title: "See Pro") { paywallContext = .memory }
-                    }
-                }
-            } else {
-                VStack(alignment: .leading, spacing: RudderSpacing.s) {
-                    // One switch for the whole feature -- most people only ever
-                    // want memory on or off, not a per-fact decision every time.
-                    RudderCard {
-                        Toggle(
-                            "Decision Memory",
-                            isOn: Binding(
-                                get: { environment.isMemoryEnabled },
-                                set: { environment.setMemoryEnabled($0) }
-                            )
-                        )
-                        .font(RudderFont.callout.weight(.medium))
-                        .toggleStyle(.switch)
-                    }
-
-                    if environment.isMemoryEnabled {
-                        if environment.memory.isEmpty {
-                            EmptyStateView(
-                                title: "Nothing learned yet.",
-                                message: "After a few decisions, RUDDER may notice a pattern and ask whether to remember it.",
-                                systemImage: "brain"
-                            )
-                        } else {
-                            VStack(spacing: RudderSpacing.s) {
-                                ForEach(environment.memory) { entry in
-                                    MemoryRow(entry: entry)
-                                }
-                            }
-                        }
-                        // A one-time, user-initiated scan across every decision
-                        // already made -- for someone who'd rather do this once
-                        // than wait for a candidate to surface one decision at a
-                        // time. Still only a proposal: nothing here writes
-                        // anything without the explicit "Remember" below.
-                        SecondaryButton(title: "Scan all decisions", systemImage: "magnifyingglass") {
-                            startMemorizeAllScan()
-                        }
-                        .disabled(environment.decisions.isEmpty)
-                    }
-                }
-            }
-        }
-    }
-
     private var dataSection: some View {
         VStack(alignment: .leading, spacing: RudderSpacing.s) {
             SectionHeader(
@@ -391,44 +295,6 @@ struct ProfileView: View {
         case .decisions: environment.deleteAllDecisions()
         case .outcomes: environment.deleteAllOutcomes()
         case .everything: environment.deleteEverything()
-        }
-    }
-}
-
-private struct MemoryRow: View {
-    let entry: MemoryEntry
-    @Environment(AppEnvironment.self) private var environment
-
-    var body: some View {
-        RudderCard {
-            VStack(alignment: .leading, spacing: RudderSpacing.s) {
-                Text(entry.statement)
-                    .font(RudderFont.callout)
-                    .foregroundStyle(RudderColor.primaryText)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text("Noticed in \(entry.evidenceCount) of your decisions")
-                    .font(RudderFont.caption)
-                    .foregroundStyle(RudderColor.tertiaryText)
-
-                HStack(spacing: RudderSpacing.m) {
-                    Toggle(
-                        "Use this",
-                        isOn: Binding(
-                            get: { entry.isEnabled },
-                            set: { environment.setMemoryEnabled($0, for: entry) }
-                        )
-                    )
-                    .font(RudderFont.footnote)
-                    .toggleStyle(.switch)
-
-                    Button("Remove", role: .destructive) {
-                        environment.deleteMemory(entry)
-                    }
-                    .font(RudderFont.footnote)
-                    .frame(minHeight: RudderSpacing.minimumTouchTarget)
-                }
-            }
         }
     }
 }
