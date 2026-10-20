@@ -41,7 +41,7 @@ final class MockAnalysisService: DecisionAnalysisService, @unchecked Sendable {
         return steps.isEmpty ? nil : steps.removeFirst()
     }
 
-    func analyse(_ request: DecisionAnalysisRequest) async throws -> ValidatedAIResponse {
+    func analyse(_ request: DecisionAnalysisRequest, onPending: @escaping @Sendable (String) -> Void) async throws -> ValidatedAIResponse {
         let step = nextStep(for: request)
 
         switch step {
@@ -56,6 +56,12 @@ final class MockAnalysisService: DecisionAnalysisService, @unchecked Sendable {
         case nil:
             throw RudderServiceError.invalidResponse
         }
+    }
+
+    /// No test exercises a real pending/resumed job -- this mock never calls
+    /// `onPending`, and nothing calls `continueJob` without one.
+    func continueJob(_ jobId: String) async throws -> ValidatedAIResponse {
+        throw RudderServiceError.invalidResponse
     }
 }
 

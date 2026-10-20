@@ -60,6 +60,15 @@ final class AppEnvironment {
     /// since it's a device setting, not data to sync or export.
     private(set) var isMemoryEnabled: Bool
     private static let memoryEnabledDefaultsKey = "rudder.isMemoryEnabled"
+    /// A decision whose analysis is still running on the backend after this
+    /// process itself was closed and relaunched -- the one case a single
+    /// `Task`'s own background-execution grace window cannot cover. Backed by
+    /// UserDefaults (device-local, not data to sync or export) so it survives
+    /// exactly that. Set the moment `DecisionCoordinator` reports a job it
+    /// couldn't finish inline, cleared the moment that job resolves either
+    /// way -- never left stale once its own outcome is known.
+    private(set) var pendingDecisionJob: PendingDecisionJob?
+    private static let pendingDecisionJobDefaultsKey = "rudder.pendingDecisionJob"
     /// Today's/this-month's usage across every quota the backend actually
     /// enforces (Backend/src/quota.ts), fetched read-only -- never computed
     /// from local decisions, which can't see another device's spend or
@@ -83,7 +92,27 @@ final class AppEnvironment {
         // proposed fact -- this switch is one more layer on top of that,
         // not instead of it.
         self.isMemoryEnabled = UserDefaults.standard.object(forKey: Self.memoryEnabledDefaultsKey) as? Bool ?? true
+        if let data = UserDefaults.standard.data(forKey: Self.pendingDecisionJobDefaultsKey) {
+            self.pendingDecisionJob = try? JSONDecoder().decode(PendingDecisionJob.self, from: data)
+        }
         reload()
+    }
+
+    /// Passed to `DecisionCoordinator` as `onPendingJob` -- see its doc
+    /// comment. Only one decision can be "the one still running" at a time,
+    /// so this simply replaces whatever was there; the previous one, if any,
+    /// already got its own `onJobResolved` call when it finished (that's how
+    /// a decision stops being the pending one in the first place).
+    func savePendingDecisionJob(_ job: PendingDecisionJob) {
+        pendingDecisionJob = job
+        guard let data = try? JSONEncoder().encode(job) else { return }
+        UserDefaults.standard.set(data, forKey: Self.pendingDecisionJobDefaultsKey)
+    }
+
+    /// Passed to `DecisionCoordinator` as `onJobResolved`.
+    func clearPendingDecisionJob() {
+        pendingDecisionJob = nil
+        UserDefaults.standard.removeObject(forKey: Self.pendingDecisionJobDefaultsKey)
     }
 
     var isPro: Bool { subscriptions.isPro }
@@ -415,7 +444,9 @@ final class AppEnvironment {
             memoryProvider: { [weak self] in
                 guard let self, self.isMemoryEnabled else { return [] }
                 return self.memory
-            }
+            },
+            onPendingJob: { [weak self] job in self?.savePendingDecisionJob(job) },
+            onJobResolved: { [weak self] in self?.clearPendingDecisionJob() }
         )
     }
 

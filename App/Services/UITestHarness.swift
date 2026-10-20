@@ -80,7 +80,7 @@ private struct ScriptedFollowUpService: FollowUpService {
 private struct ScriptedAnalysisService: DecisionAnalysisService {
     let scenario: UITestHarness.Scenario
 
-    func analyse(_ request: DecisionAnalysisRequest) async throws -> ValidatedAIResponse {
+    func analyse(_ request: DecisionAnalysisRequest, onPending: @escaping @Sendable (String) -> Void) async throws -> ValidatedAIResponse {
         // A short delay so the working states are actually rendered and can be
         // observed, rather than being skipped in the same frame.
         try? await Task.sleep(nanoseconds: 150_000_000)
@@ -104,6 +104,12 @@ private struct ScriptedAnalysisService: DecisionAnalysisService {
         case .noClearWinner:
             return try AIResponseValidator.validate(Self.tiedResponse())
         }
+    }
+
+    /// No scripted scenario ever reports pending, so nothing in the UI test
+    /// suite should ever call this.
+    func continueJob(_ jobId: String) async throws -> ValidatedAIResponse {
+        throw RudderServiceError.invalidResponse
     }
 
     // MARK: Scripted payloads

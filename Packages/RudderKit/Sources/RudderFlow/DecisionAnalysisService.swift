@@ -7,7 +7,7 @@ import RudderCore
 /// What the app sends to its own backend. No credentials, no device identifiers —
 /// just the decision and what the user has already told us.
 public struct DecisionAnalysisRequest: Encodable, Sendable {
-    public struct Answer: Encodable, Sendable {
+    public struct Answer: Codable, Sendable {
         public let questionId: String
         public let answer: String
 
@@ -59,8 +59,50 @@ public struct DecisionAnalysisRequest: Encodable, Sendable {
     }
 }
 
+/// Everything needed to pick a decision's polling back up after the app that
+/// started it is fully closed and relaunched -- the one thing a single
+/// in-memory `Task`, however long its background-execution grace window,
+/// cannot survive on its own. Persisted by whoever owns `DecisionCoordinator`
+/// (see its `onPendingJob`/`resume(from:)`) the moment a job is slow enough to
+/// need it, and cleared the moment it resolves either way.
+public struct PendingDecisionJob: Codable, Sendable, Equatable {
+    public let jobId: String
+    public let prompt: String
+    public let answers: [DecisionAnalysisRequest.Answer]
+    public let questionsAsked: [String]
+    public let complexityOverride: DecisionComplexity?
+    public let decisionID: UUID
+    public let createdAt: Date
+
+    public init(
+        jobId: String,
+        prompt: String,
+        answers: [DecisionAnalysisRequest.Answer],
+        questionsAsked: [String],
+        complexityOverride: DecisionComplexity?,
+        decisionID: UUID,
+        createdAt: Date = Date()
+    ) {
+        self.jobId = jobId
+        self.prompt = prompt
+        self.answers = answers
+        self.questionsAsked = questionsAsked
+        self.complexityOverride = complexityOverride
+        self.decisionID = decisionID
+        self.createdAt = createdAt
+    }
+}
+
 public protocol DecisionAnalysisService: Sendable {
-    func analyse(_ request: DecisionAnalysisRequest) async throws -> ValidatedAIResponse
+    /// `onPending` fires at most once per call, the moment the backend
+    /// reports `{ jobId, pending: true }` (see Backend/src/handler.ts) instead
+    /// of a finished result -- the caller's only chance to persist that jobId
+    /// before this same call goes on to poll it to completion itself.
+    func analyse(_ request: DecisionAnalysisRequest, onPending: @escaping @Sendable (String) -> Void) async throws -> ValidatedAIResponse
+    /// Picks a job's polling back up from just its ID -- no new request body,
+    /// no new charge, the same `{ jobId }` shape `analyse(_:onPending:)` uses
+    /// internally once it already has one.
+    func continueJob(_ jobId: String) async throws -> ValidatedAIResponse
 }
 
 /// Talks to RUDDER's backend, validates whatever comes back, and retries once
@@ -107,12 +149,15 @@ public struct RemoteDecisionAnalysisService: DecisionAnalysisService {
         self.proTransactionProvider = proTransactionProvider
     }
 
-    public func analyse(_ request: DecisionAnalysisRequest) async throws -> ValidatedAIResponse {
+    public func analyse(
+        _ request: DecisionAnalysisRequest,
+        onPending: @escaping @Sendable (String) -> Void
+    ) async throws -> ValidatedAIResponse {
         guard configuration.isBackendConfigured else { throw RudderServiceError.notConfigured }
         guard reachability() else { throw RudderServiceError.offline }
 
         do {
-            return try await perform(request)
+            return try await perform(request, onPending: onPending)
         } catch RudderServiceError.invalidResponse {
             // One retry, asking the backend to be stricter about the schema.
             let strict = DecisionAnalysisRequest(
@@ -135,8 +180,19 @@ public struct RemoteDecisionAnalysisService: DecisionAnalysisService {
                 questionsAlreadyAsked: request.questionsAlreadyAsked,
                 strictSchema: true
             )
-            return try await perform(strict)
+            return try await perform(strict, onPending: onPending)
         }
+    }
+
+    public func continueJob(_ jobId: String) async throws -> ValidatedAIResponse {
+        guard configuration.isBackendConfigured else { throw RudderServiceError.notConfigured }
+        guard reachability() else { throw RudderServiceError.offline }
+        guard let baseURL = configuration.apiBaseURL else { throw RudderServiceError.notConfigured }
+        let endpoint = baseURL.appendingPathComponent("v1/decisions/analyze")
+        // The next poll happens immediately, not after another jobPollInterval
+        // wait: resuming from a relaunch is itself evidence enough time has
+        // already passed since the job was left running.
+        return try await pollUntilDone(jobId: jobId, endpoint: endpoint, waitFirst: false)
     }
 
     /// Present only on the backend's `{ jobId, pending: true }` shape (see
@@ -158,43 +214,50 @@ public struct RemoteDecisionAnalysisService: DecisionAnalysisService {
     private static let jobPollDeadline: TimeInterval = 600
     private static let jobPollInterval: UInt64 = 2_500_000_000
 
-    private func perform(_ request: DecisionAnalysisRequest) async throws -> ValidatedAIResponse {
+    private func perform(
+        _ request: DecisionAnalysisRequest,
+        onPending: @escaping @Sendable (String) -> Void
+    ) async throws -> ValidatedAIResponse {
         guard let baseURL = configuration.apiBaseURL else { throw RudderServiceError.notConfigured }
         let endpoint = baseURL.appendingPathComponent("v1/decisions/analyze")
         let body = try JSONEncoder().encode(request)
         let (data, http) = try await send(body: body, to: endpoint)
         try checkStatus(http)
-        return try await resolve(data: data, endpoint: endpoint)
-    }
 
-    /// Either the finished result, or -- when the backend answered
-    /// `{ jobId, pending: true }` because one analyse() attempt didn't finish
-    /// inside its own time budget (see JOB_RACE_DEADLINE_MS in
-    /// Backend/src/handler.ts) -- polls the same endpoint with that jobId
-    /// until it is. This is what makes a slow analysis a wait instead of a
-    /// failure: the previous behaviour was one request, one timeout, one
-    /// error shown to the user with nothing to do but tap Try Again and hope
-    /// the same race goes better. Backgrounding the app mid-poll is covered
-    /// by DecisionCoordinator's existing background-task window (this loop
-    /// just keeps running during it instead of a single doomed await) --
-    /// resuming a poll after the app was fully closed and relaunched is not
-    /// yet implemented.
-    private func resolve(data: Data, endpoint: URL) async throws -> ValidatedAIResponse {
         guard let envelope = try? JSONDecoder().decode(JobEnvelope.self, from: data),
               envelope.pending == true,
               let jobId = envelope.jobId
         else {
             return try decodeResult(data)
         }
+        onPending(jobId)
+        return try await pollUntilDone(jobId: jobId, endpoint: endpoint, waitFirst: true)
+    }
 
+    /// Polls `{ jobId }` against the same endpoint until the job is actually
+    /// done or failed, instead of treating "still working" as an error. This
+    /// is what makes a slow analysis a wait instead of a failure: the
+    /// previous behaviour was one request, one timeout, one error shown to
+    /// the user with nothing to do but tap Try Again and hope the same race
+    /// goes better. Backgrounding the app mid-poll is covered by
+    /// DecisionCoordinator's existing background-task window (this loop just
+    /// keeps running during it instead of a single doomed await); the app
+    /// being fully closed and relaunched is covered by `continueJob(_:)`
+    /// above, called from `DecisionCoordinator.resume(from:)` with a jobId
+    /// persisted by `onPending` before this method was ever reached.
+    private func pollUntilDone(jobId: String, endpoint: URL, waitFirst: Bool) async throws -> ValidatedAIResponse {
         let deadline = Date().addingTimeInterval(Self.jobPollDeadline)
+        var shouldWait = waitFirst
         while Date() < deadline {
             guard reachability() else { throw RudderServiceError.offline }
-            do {
-                try await Task.sleep(nanoseconds: Self.jobPollInterval)
-            } catch {
-                throw RudderServiceError.cancelled
+            if shouldWait {
+                do {
+                    try await Task.sleep(nanoseconds: Self.jobPollInterval)
+                } catch {
+                    throw RudderServiceError.cancelled
+                }
             }
+            shouldWait = true
 
             let body = try JSONEncoder().encode(ContinueRequest(jobId: jobId))
             let (data, http) = try await send(body: body, to: endpoint)
