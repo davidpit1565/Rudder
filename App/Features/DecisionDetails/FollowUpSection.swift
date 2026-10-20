@@ -173,7 +173,7 @@ private struct FollowUpExchangeRow: View {
             HStack {
                 Spacer(minLength: RudderSpacing.xl)
                 Text(exchange.question)
-                    .font(RudderFont.callout.weight(.medium))
+                    .font(RudderFont.body.weight(.medium))
                     .foregroundStyle(RudderColor.onAccent)
                     .fixedSize(horizontal: false, vertical: true)
                     .chatBubble(isUser: true)
@@ -181,7 +181,7 @@ private struct FollowUpExchangeRow: View {
 
             HStack {
                 Text(exchange.answer)
-                    .font(RudderFont.callout)
+                    .font(RudderFont.body)
                     .foregroundStyle(RudderColor.primaryText)
                     .fixedSize(horizontal: false, vertical: true)
                     .chatBubble(isUser: false)

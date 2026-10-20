@@ -6,8 +6,14 @@ import RudderCore
 /// boundaries — never the model's internal reasoning.
 struct AnalysisView: View {
     let result: DecisionResult
+    /// Set only when this decision is already saved (reached from
+    /// DecisionDetailsView) -- that's the only place a follow-up conversation
+    /// on it exists. nil when reached mid-decision, before a choice is made,
+    /// where there is nothing yet to continue.
+    var record: DecisionRecord? = nil
 
     @State private var isChallenging = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
@@ -21,6 +27,9 @@ struct AnalysisView: View {
                 risks
                 research
                 conflicts
+                if record != nil {
+                    continueConversation
+                }
             }
             .screenPadding()
             .padding(.vertical, RudderSpacing.l)
@@ -28,6 +37,23 @@ struct AnalysisView: View {
         .background(RudderColor.background)
         .navigationTitle("Analysis")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// The analysis is a dead end on its own -- this is the one way back into
+    /// the same conversation (the follow-up section on DecisionDetailsView)
+    /// without the user having to find the back button themselves.
+    private var continueConversation: some View {
+        Button {
+            dismiss()
+        } label: {
+            HStack {
+                Text("Continue the conversation")
+                    .font(RudderFont.callout.weight(.medium))
+                Image(systemName: "chevron.left").font(.caption.weight(.semibold))
+            }
+            .foregroundStyle(RudderColor.accent)
+            .frame(maxWidth: .infinity, minHeight: RudderSpacing.minimumTouchTarget)
+        }
     }
 
     // MARK: Sections
@@ -77,7 +103,7 @@ struct AnalysisView: View {
                                 }
                                 if let rationale = criterion.rationale, !rationale.isEmpty {
                                     Text(rationale)
-                                        .font(RudderFont.footnote)
+                                        .font(RudderFont.callout)
                                         .foregroundStyle(RudderColor.secondaryText)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
@@ -119,7 +145,7 @@ struct AnalysisView: View {
                                 .foregroundStyle(RudderColor.tertiaryText)
                             ForEach(result.eliminated) { option in
                                 Text("\(option.name) — \(option.failedConstraints.joined(separator: ", "))")
-                                    .font(RudderFont.footnote)
+                                    .font(RudderFont.callout)
                                     .foregroundStyle(RudderColor.secondaryText)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
@@ -146,7 +172,7 @@ struct AnalysisView: View {
                                     .font(.caption)
                                     .foregroundStyle(RudderColor.tertiaryText)
                                 Text("\(flip.label), I'd point at \(flip.winnerName ?? "a different option").")
-                                    .font(RudderFont.footnote)
+                                    .font(RudderFont.callout)
                                     .foregroundStyle(RudderColor.primaryText)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
@@ -173,7 +199,7 @@ struct AnalysisView: View {
 
                             ForEach(challenge.additionalCounterpoints, id: \.self) { point in
                                 Text("• \(point)")
-                                    .font(RudderFont.footnote)
+                                    .font(RudderFont.callout)
                                     .foregroundStyle(RudderColor.secondaryText)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
@@ -211,7 +237,7 @@ struct AnalysisView: View {
                                     .fixedSize(horizontal: false, vertical: true)
                                 if !assumption.impactIfWrong.isEmpty {
                                     Text("If that's wrong: \(assumption.impactIfWrong)")
-                                        .font(RudderFont.footnote)
+                                        .font(RudderFont.callout)
                                         .foregroundStyle(RudderColor.secondaryText)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
@@ -242,7 +268,7 @@ struct AnalysisView: View {
                                         .foregroundStyle(RudderColor.secondaryText)
                                 }
                                 Text(risk.detail)
-                                    .font(RudderFont.footnote)
+                                    .font(RudderFont.callout)
                                     .foregroundStyle(RudderColor.secondaryText)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
@@ -286,7 +312,7 @@ struct AnalysisView: View {
                                     .font(RudderFont.callout.weight(.medium))
                                     .foregroundStyle(RudderColor.primaryText)
                                 Text(conflict.detail)
-                                    .font(RudderFont.footnote)
+                                    .font(RudderFont.callout)
                                     .foregroundStyle(RudderColor.secondaryText)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
@@ -307,7 +333,7 @@ struct AnalysisView: View {
                 .foregroundStyle(RudderColor.tertiaryText)
             ForEach(items, id: \.self) { item in
                 Text("• \(item)")
-                    .font(RudderFont.footnote)
+                    .font(RudderFont.callout)
                     .foregroundStyle(RudderColor.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -355,7 +381,7 @@ private struct OptionComparisonRow: View {
 
             if let summary = option?.summary, !summary.isEmpty {
                 Text(summary)
-                    .font(RudderFont.footnote)
+                    .font(RudderFont.callout)
                     .foregroundStyle(RudderColor.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -415,7 +441,7 @@ private struct ResearchRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RudderSpacing.xs) {
             Text(finding.claim)
-                .font(RudderFont.footnote)
+                .font(RudderFont.callout)
                 .foregroundStyle(RudderColor.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
