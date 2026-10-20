@@ -87,17 +87,21 @@ struct DecisionDetailsView: View {
 
     private var summary: some View {
         VStack(alignment: .leading, spacing: RudderSpacing.m) {
-            VStack(alignment: .leading, spacing: RudderSpacing.xs) {
-                Text(current.chosenOption != nil ? "You chose" : "I recommended")
-                    .font(RudderFont.footnote.weight(.medium))
-                    .foregroundStyle(RudderColor.tertiaryText)
-                Text(current.chosenOption?.name ?? current.result.recommendedOption?.name ?? "No clear winner")
-                    .font(RudderFont.title)
-                    .foregroundStyle(RudderColor.primaryText)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(current.createdAt.formatted(.dateTime.month(.wide).day().year()))
-                    .font(RudderFont.footnote)
-                    .foregroundStyle(RudderColor.tertiaryText)
+            HStack(alignment: .top, spacing: RudderSpacing.s) {
+                IconBadge(systemImage: current.result.category.icon)
+
+                VStack(alignment: .leading, spacing: RudderSpacing.xs) {
+                    Text(current.chosenOption != nil ? "You chose" : "I recommended")
+                        .font(RudderFont.footnote.weight(.medium))
+                        .foregroundStyle(RudderColor.tertiaryText)
+                    Text(current.chosenOption?.name ?? current.result.recommendedOption?.name ?? "No clear winner")
+                        .font(RudderFont.title)
+                        .foregroundStyle(RudderColor.primaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(current.createdAt.formatted(.dateTime.month(.wide).day().year()))
+                        .font(RudderFont.footnote)
+                        .foregroundStyle(RudderColor.tertiaryText)
+                }
             }
             .accessibilityElement(children: .combine)
 
@@ -158,18 +162,22 @@ struct DecisionDetailsView: View {
     private var outcomeSection: some View {
         if let outcome = current.outcome {
             RudderCard {
-                VStack(alignment: .leading, spacing: RudderSpacing.xs) {
-                    Text("How it went")
-                        .font(RudderFont.footnote.weight(.medium))
-                        .foregroundStyle(RudderColor.tertiaryText)
-                    Text(outcomeLabel(outcome.rating))
-                        .font(RudderFont.callout.weight(.medium))
-                        .foregroundStyle(RudderColor.primaryText)
-                    if let note = outcome.note, !note.isEmpty {
-                        Text(note)
-                            .font(RudderFont.footnote)
-                            .foregroundStyle(RudderColor.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .top, spacing: RudderSpacing.s) {
+                    IconBadge(systemImage: outcome.rating.symbol, tint: outcome.rating.tint)
+
+                    VStack(alignment: .leading, spacing: RudderSpacing.xs) {
+                        Text("How it went")
+                            .font(RudderFont.footnote.weight(.medium))
+                            .foregroundStyle(RudderColor.tertiaryText)
+                        Text(outcome.rating.title)
+                            .font(RudderFont.callout.weight(.medium))
+                            .foregroundStyle(RudderColor.primaryText)
+                        if let note = outcome.note, !note.isEmpty {
+                            Text(note)
+                                .font(RudderFont.footnote)
+                                .foregroundStyle(RudderColor.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
             }
@@ -182,14 +190,6 @@ struct DecisionDetailsView: View {
                     SecondaryButton(title: "Tell me") { showingOutcome = true }
                 }
             }
-        }
-    }
-
-    private func outcomeLabel(_ rating: Outcome.Rating) -> String {
-        switch rating {
-        case .great: return "Great"
-        case .mixed: return "Mixed"
-        case .notGreat: return "Not great"
         }
     }
 }
@@ -221,9 +221,9 @@ struct OutcomeSheet: View {
                         .foregroundStyle(RudderColor.primaryText)
 
                     VStack(spacing: RudderSpacing.s) {
-                        ratingButton(.great, title: "Great", symbol: "hand.thumbsup")
-                        ratingButton(.mixed, title: "Mixed", symbol: "equal.circle")
-                        ratingButton(.notGreat, title: "Not great", symbol: "hand.thumbsdown")
+                        ratingButton(.great)
+                        ratingButton(.mixed)
+                        ratingButton(.notGreat)
                     }
 
                     if rating == .notGreat || rating == .mixed {
@@ -264,13 +264,13 @@ struct OutcomeSheet: View {
         }
     }
 
-    private func ratingButton(_ value: Outcome.Rating, title: String, symbol: String) -> some View {
+    private func ratingButton(_ value: Outcome.Rating) -> some View {
         Button {
             rating = value
         } label: {
             HStack(spacing: RudderSpacing.m) {
-                Image(systemName: symbol)
-                Text(title).font(RudderFont.body)
+                IconBadge(systemImage: value.symbol, tint: value.tint)
+                Text(value.title).font(RudderFont.body)
                 Spacer()
                 if rating == value {
                     Image(systemName: "checkmark").foregroundStyle(RudderColor.accent)
