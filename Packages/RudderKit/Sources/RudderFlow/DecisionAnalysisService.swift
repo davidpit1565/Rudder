@@ -139,10 +139,75 @@ public struct RemoteDecisionAnalysisService: DecisionAnalysisService {
         }
     }
 
+    /// Present only on the backend's `{ jobId, pending: true }` shape (see
+    /// Backend/src/handler.ts's respondForJob) -- a real `AIDecisionResponse`
+    /// has neither field, so decoding this first and checking `pending` is
+    /// enough to tell the two apart without guessing from the HTTP status.
+    private struct JobEnvelope: Decodable {
+        let jobId: String?
+        let pending: Bool?
+    }
+
+    private struct ContinueRequest: Encodable {
+        let jobId: String
+    }
+
+    /// How long to keep polling an in-progress job before giving up --
+    /// matches JOB_TTL_SECONDS in Backend/src/jobs.ts, so this never gives up
+    /// on a job the server itself would still happily resume.
+    private static let jobPollDeadline: TimeInterval = 600
+    private static let jobPollInterval: UInt64 = 2_500_000_000
+
     private func perform(_ request: DecisionAnalysisRequest) async throws -> ValidatedAIResponse {
         guard let baseURL = configuration.apiBaseURL else { throw RudderServiceError.notConfigured }
         let endpoint = baseURL.appendingPathComponent("v1/decisions/analyze")
+        let body = try JSONEncoder().encode(request)
+        let (data, http) = try await send(body: body, to: endpoint)
+        try checkStatus(http)
+        return try await resolve(data: data, endpoint: endpoint)
+    }
 
+    /// Either the finished result, or -- when the backend answered
+    /// `{ jobId, pending: true }` because one analyse() attempt didn't finish
+    /// inside its own time budget (see JOB_RACE_DEADLINE_MS in
+    /// Backend/src/handler.ts) -- polls the same endpoint with that jobId
+    /// until it is. This is what makes a slow analysis a wait instead of a
+    /// failure: the previous behaviour was one request, one timeout, one
+    /// error shown to the user with nothing to do but tap Try Again and hope
+    /// the same race goes better. Backgrounding the app mid-poll is covered
+    /// by DecisionCoordinator's existing background-task window (this loop
+    /// just keeps running during it instead of a single doomed await) --
+    /// resuming a poll after the app was fully closed and relaunched is not
+    /// yet implemented.
+    private func resolve(data: Data, endpoint: URL) async throws -> ValidatedAIResponse {
+        guard let envelope = try? JSONDecoder().decode(JobEnvelope.self, from: data),
+              envelope.pending == true,
+              let jobId = envelope.jobId
+        else {
+            return try decodeResult(data)
+        }
+
+        let deadline = Date().addingTimeInterval(Self.jobPollDeadline)
+        while Date() < deadline {
+            guard reachability() else { throw RudderServiceError.offline }
+            do {
+                try await Task.sleep(nanoseconds: Self.jobPollInterval)
+            } catch {
+                throw RudderServiceError.cancelled
+            }
+
+            let body = try JSONEncoder().encode(ContinueRequest(jobId: jobId))
+            let (data, http) = try await send(body: body, to: endpoint)
+            try checkStatus(http)
+            if let envelope = try? JSONDecoder().decode(JobEnvelope.self, from: data), envelope.pending == true {
+                continue
+            }
+            return try decodeResult(data)
+        }
+        throw RudderServiceError.timedOut
+    }
+
+    private func send(body: Data, to endpoint: URL) async throws -> (Data, HTTPURLResponse) {
         var urlRequest = URLRequest(url: endpoint)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -151,7 +216,7 @@ public struct RemoteDecisionAnalysisService: DecisionAnalysisService {
         if let transaction = await proTransactionProvider() {
             urlRequest.setValue(transaction, forHTTPHeaderField: "X-Rudder-Transaction")
         }
-        urlRequest.httpBody = try JSONEncoder().encode(request)
+        urlRequest.httpBody = body
 
         let data: Data
         let response: URLResponse
@@ -173,9 +238,13 @@ public struct RemoteDecisionAnalysisService: DecisionAnalysisService {
         }
 
         guard let http = response as? HTTPURLResponse else { throw RudderServiceError.serverUnavailable }
+        return (data, http)
+    }
+
+    private func checkStatus(_ http: HTTPURLResponse) throws {
         switch http.statusCode {
         case 200...299:
-            break
+            return
         case 429:
             throw RudderServiceError.rateLimited
         case 400...499:
@@ -183,9 +252,11 @@ public struct RemoteDecisionAnalysisService: DecisionAnalysisService {
         default:
             throw RudderServiceError.serverUnavailable
         }
+    }
 
-        // A response that cannot be decoded, validated or repaired is a service
-        // failure — never something that reaches the UI half-formed.
+    /// A response that cannot be decoded, validated or repaired is a service
+    /// failure — never something that reaches the UI half-formed.
+    private func decodeResult(_ data: Data) throws -> ValidatedAIResponse {
         do {
             let decoded = try JSONDecoder().decode(AIDecisionResponse.self, from: data)
             return try AIResponseValidator.validate(decoded)
