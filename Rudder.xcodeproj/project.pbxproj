@@ -25,6 +25,7 @@
 		429D2FF9C7FF1B77D813608D /* RudderCore in Frameworks */ = {isa = PBXBuildFile; productRef = 74CCD21F163DC206D5985774 /* RudderCore */; };
 		4C8F44EF557DAB0ECC551D40 /* PersistenceServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C959B0BD4C2EA15F24A61D7 /* PersistenceServiceTests.swift */; };
 		4D9BE34EA7F866E1024E3605 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FC170525F82A87D3CAE08BE /* ProfileView.swift */; };
+		4632A6807AB70DBA82D420B4 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB805586C476922EE71D88E5 /* InsightsView.swift */; };
 		5BC5D53364AF79EDED0F208C /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B306E494D0D420CC93DC8B57 /* WidgetBridge.swift */; };
 		638982C041B920B48FE60A42 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8E64B6EFC6C418936C2804 /* RootView.swift */; };
 		63FA111DDFEFCD744E7DCE7F /* DecisionDetailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EDDDF5A02C9F0F452BE9277 /* DecisionDetailsView.swift */; };
@@ -96,6 +97,7 @@
 		2E3844136B9D4042F91A2275 /* RudderTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RudderTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2EDDDF5A02C9F0F452BE9277 /* DecisionDetailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecisionDetailsView.swift; sourceTree = "<group>"; };
 		2FC170525F82A87D3CAE08BE /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		FB805586C476922EE71D88E5 /* InsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsView.swift; sourceTree = "<group>"; };
 		3422E089C01C33D7B7C4EC14 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		3A218437E08E71944680822E /* RecommendationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecommendationView.swift; sourceTree = "<group>"; };
 		42A590323396990BCBAA203F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -257,6 +259,14 @@
 			path = Home;
 			sourceTree = "<group>";
 		};
+		F8736DFDD75B338C43E374CD /* Insights */ = {
+			isa = PBXGroup;
+			children = (
+				FB805586C476922EE71D88E5 /* InsightsView.swift */,
+			);
+			path = Insights;
+			sourceTree = "<group>";
+		};
 		685093DF31211CF89CD5B2FA /* Profile */ = {
 			isa = PBXGroup;
 			children = (
@@ -323,6 +333,7 @@
 			children = (
 				02F2CFBBA0F807B449970372 /* DecisionDetails */,
 				668EC6EC4CD64115102AD896 /* Home */,
+				F8736DFDD75B338C43E374CD /* Insights */,
 				D2973A58C8780D8D893610C8 /* NewDecision */,
 				1FDBD242EB8635DB0557C29E /* Onboarding */,
 				DF85E50F11ECA7A867B6C7B0 /* Paywall */,
@@ -550,6 +561,7 @@
 				B8C1A13D88C7F57DA4CBADBA /* PaywallView.swift in Sources */,
 				F23200FD98BF76BF59388420 /* PersistenceModels.swift in Sources */,
 				9163E5ABBA7F8C8F0327D3AB /* PersistenceService.swift in Sources */,
+				4632A6807AB70DBA82D420B4 /* InsightsView.swift in Sources */,
 				4D9BE34EA7F866E1024E3605 /* ProfileView.swift in Sources */,
 				BD240AC1ED4FE36702C3DBB2 /* RecommendationView.swift in Sources */,
 				FBB344F29A6F07C9966718A5 /* ShareableDecisionCard.swift in Sources */,

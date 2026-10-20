@@ -6,6 +6,7 @@ import Foundation
 struct RootView: View {
     enum Tab: Hashable {
         case decide
+        case insights
         case profile
     }
 
@@ -36,6 +37,10 @@ struct RootView: View {
                     HomeView()
                         .tabItem { Label("Decide", systemImage: "arrow.triangle.branch") }
                         .tag(Tab.decide)
+
+                    InsightsView()
+                        .tabItem { Label("Insights", systemImage: "chart.bar.fill") }
+                        .tag(Tab.insights)
 
                     ProfileView()
                         .tabItem { Label("Profile", systemImage: "person.crop.circle") }

@@ -191,11 +191,12 @@ final class RudderUITests: XCTestCase {
         XCTAssertEqual(decisionInput.value as? String, "Which laptop should I buy?")
     }
 
-    func testThereAreExactlyTwoPlaces() {
+    func testThereAreExactlyThreePlaces() {
         launch()
         XCTAssertTrue(app.tabBars.buttons["Decide"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.tabBars.buttons["Insights"].exists)
         XCTAssertTrue(app.tabBars.buttons["Profile"].exists)
-        XCTAssertEqual(app.tabBars.buttons.count, 2, "Decisions lives on the Decide screen now, not its own tab")
+        XCTAssertEqual(app.tabBars.buttons.count, 3, "Decisions lives on the Decide screen now, not its own tab")
     }
 
     // MARK: The whole flow
