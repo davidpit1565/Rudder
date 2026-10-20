@@ -31,6 +31,12 @@ public final class DecisionCoordinator {
     }
 
     public private(set) var phase: Phase = .idle
+    /// True from the moment an answer (or a skip) is submitted until the next
+    /// real phase change lands. `phase` itself stays `.asking` for the whole
+    /// round trip -- `handle(_:)` only advances it once the response is back
+    /// -- so without this the question screen visibly does nothing for
+    /// however long the request takes, which reads as the app having frozen.
+    public private(set) var isSubmittingAnswer = false
     /// The research level the in-flight (or most recent) request was sent
     /// with -- known on-device before the request goes out (`ResearchPolicy`),
     /// so the working screen can honestly show a "looking things up" stage
@@ -140,6 +146,7 @@ public final class DecisionCoordinator {
         answers.append(.init(questionId: question.id, answer: trimmed))
         questionsAsked.append(question.id)
         analytics.track(.questionAnswered)
+        isSubmittingAnswer = true
         // The machine moves ASK -> READINESS CHECK inside `handle`, once there is
         // something new to check.
         run()
@@ -150,6 +157,7 @@ public final class DecisionCoordinator {
     public func skipQuestion(_ question: QuestionCandidate) {
         questionsAsked.append(question.id)
         answers.append(.init(questionId: question.id, answer: "(not answered)"))
+        isSubmittingAnswer = true
         run()
     }
 
@@ -178,6 +186,7 @@ public final class DecisionCoordinator {
         decisionID = UUID()
         phase = .idle
         activeResearchLevel = nil
+        isSubmittingAnswer = false
     }
 
     private func run() {
@@ -354,6 +363,7 @@ public final class DecisionCoordinator {
     }
 
     private func fail(with error: RudderServiceError) {
+        isSubmittingAnswer = false
         if machine.canTransition(to: .failed) {
             _ = try? machine.transition(to: .failed)
         }
@@ -362,6 +372,7 @@ public final class DecisionCoordinator {
 
     /// Records a state change and keeps `phase` in step with the machine.
     private func advance(to state: DecisionFlowState) {
+        isSubmittingAnswer = false
         do {
             try machine.transition(to: state)
         } catch {

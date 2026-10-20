@@ -80,6 +80,7 @@ struct DecisionFlowView: View {
             QuestionScreen(
                 question: question,
                 preliminary: coordinator.preliminary,
+                isSubmitting: coordinator.isSubmittingAnswer,
                 onAnswer: { coordinator.answer($0, to: question) },
                 onSkip: { coordinator.skipQuestion(question) }
             )
@@ -186,6 +187,7 @@ private struct PreliminaryCard: View {
 private struct QuestionScreen: View {
     let question: QuestionCandidate
     let preliminary: PreliminaryDirection?
+    let isSubmitting: Bool
     let onAnswer: (String) -> Void
     let onSkip: () -> Void
 
@@ -221,6 +223,7 @@ private struct QuestionScreen: View {
                 .accessibilityElement(children: .combine)
 
                 answerControls
+                    .disabled(isSubmitting)
             }
             .screenPadding()
             .padding(.top, RudderSpacing.l)
@@ -231,7 +234,8 @@ private struct QuestionScreen: View {
             VStack(spacing: RudderSpacing.s) {
                 PrimaryButton(
                     title: "Continue",
-                    isEnabled: canSubmit,
+                    isLoading: isSubmitting,
+                    isEnabled: canSubmit && !isSubmitting,
                     identifier: RudderID.continueAfterQuestion
                 ) {
                     isFocused = false
@@ -243,6 +247,7 @@ private struct QuestionScreen: View {
                 }
                 .font(RudderFont.footnote)
                 .frame(minHeight: RudderSpacing.minimumTouchTarget)
+                .disabled(isSubmitting)
                 .accessibilityHint("Continues without this answer, and RUDDER will say what it had to assume")
             }
             .screenPadding()
