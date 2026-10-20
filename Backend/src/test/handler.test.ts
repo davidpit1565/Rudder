@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 import { handle } from "../handler.js";
+import { AnalysisError } from "../analyze.js";
 import { resetRateLimits, resolveClientKey } from "../rateLimit.js";
 import { resetConcurrency } from "../concurrency.js";
 import { resetDeepDecisionQuota, resetDailyQuota } from "../quota.js";
@@ -875,4 +876,96 @@ test("a global concurrency cap is shared between analyze and follow-up", async (
 
   delete process.env.DECIDE_MAX_CONCURRENT_ANALYSES;
   resetConcurrency();
+});
+
+// MARK: Job model -- the resumable path a slow or interrupted analysis takes
+// instead of hanging the request until Vercel kills it (see handler.ts's
+// JOB_RACE_DEADLINE_MS / runJobAttempt doc comments for the real failure this
+// replaces). DECIDE_JOB_RACE_DEADLINE_MS lets these races resolve in
+// milliseconds instead of the real ~45s default.
+
+test("a slow analysis comes back as a pending job instead of hanging, and continuing it finds the finished result", async () => {
+  resetConcurrency();
+  process.env.DECIDE_JOB_RACE_DEADLINE_MS = "20";
+
+  const { analyse, release } = controllableAnalyse();
+  const first = await handle(request(), { analyse });
+  assert.equal(first.status, 200);
+  const created = JSON.parse(first.body);
+  assert.equal(created.pending, true);
+  assert.ok(typeof created.jobId === "string" && created.jobId.length > 0);
+
+  release();
+  // The first attempt's own background resolve (see runJobAttempt) may or may
+  // not have landed by the time this runs -- either way, continuing must
+  // reach "done", whether by finding it already resolved or by making a
+  // fresh attempt of its own (the gate is already open, so that resolves
+  // immediately too).
+  let final = await handle(request({ body: JSON.stringify({ jobId: created.jobId }) }), { analyse });
+  if (JSON.parse(final.body).pending) {
+    final = await handle(request({ body: JSON.stringify({ jobId: created.jobId }) }), { analyse });
+  }
+  assert.equal(final.status, 200);
+  const finalBody = JSON.parse(final.body);
+  assert.equal(finalBody.pending, undefined);
+  assert.equal(finalBody.schemaVersion, SCHEMA_VERSION);
+
+  delete process.env.DECIDE_JOB_RACE_DEADLINE_MS;
+  resetConcurrency();
+});
+
+test("continuing an unknown job id reports not_found rather than hanging or crashing", async () => {
+  const response = await handle(request({ body: JSON.stringify({ jobId: "does-not-exist" }) }));
+  assert.equal(response.status, 404);
+  assert.equal(JSON.parse(response.body).error, "job_not_found");
+});
+
+test("a job that keeps hitting a retryable upstream error eventually fails and refunds, instead of retrying forever", async () => {
+  resetConcurrency();
+  resetDailyQuota();
+  process.env.DECIDE_JOB_RACE_DEADLINE_MS = "20";
+
+  const alwaysUnavailable = async (): Promise<WireResponse> => {
+    throw new AnalysisError("upstream_unavailable", 503);
+  };
+  const headers = { "x-rudder-install-id": "retry-exhaust-install" };
+
+  const first = await handle(request({ headers, body: validBody({ complexity: "medium" }) }), { analyse: alwaysUnavailable });
+  assert.equal(first.status, 200);
+  assert.equal(JSON.parse(first.body).pending, true);
+  const { jobId } = JSON.parse(first.body);
+
+  let last = first;
+  for (let i = 0; i < 5 && JSON.parse(last.body).pending; i++) {
+    last = await handle(request({ headers, body: JSON.stringify({ jobId }) }), { analyse: alwaysUnavailable });
+  }
+  assert.equal(last.status, 503, "every attempt fails the same way, so it must eventually give up rather than poll forever");
+  assert.equal(JSON.parse(last.body).error, "upstream_unavailable");
+
+  // The daily quota this decision would have spent is given back, exactly as
+  // an immediate same-call failure already does on the fast path.
+  const status = await handle({ method: "GET", path: "/v1/quota/status", headers, body: "", clientKey: "retry-exhaust-status" });
+  assert.equal(JSON.parse(status.body).medium.used, 0);
+
+  delete process.env.DECIDE_JOB_RACE_DEADLINE_MS;
+  resetConcurrency();
+  resetDailyQuota();
+});
+
+test("a non-retryable error fails a job immediately, on the very first attempt", async () => {
+  resetConcurrency();
+  resetDailyQuota();
+
+  const refused = async (): Promise<WireResponse> => {
+    throw new AnalysisError("refused", 422);
+  };
+  const headers = { "x-rudder-install-id": "non-retryable-install" };
+
+  const response = await handle(request({ headers, body: validBody({ complexity: "medium" }) }), { analyse: refused });
+  assert.equal(response.status, 422, "a deterministic failure is reported right away, not retried");
+  assert.equal(JSON.parse(response.body).error, "refused");
+  assert.equal(JSON.parse(response.body).pending, undefined);
+
+  resetConcurrency();
+  resetDailyQuota();
 });

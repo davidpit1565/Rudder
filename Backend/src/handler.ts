@@ -1,6 +1,7 @@
+import * as z from "zod/v4";
 import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
-import { AnalysisRequestSchema, FollowUpRequestSchema } from "./schema.js";
+import { AnalysisRequestSchema, FollowUpRequestSchema, type WireResponse } from "./schema.js";
 import { analyse as defaultAnalyse, AnalysisError, type AnalysisClients } from "./analyze.js";
 import { followUp as defaultFollowUp, FollowUpError } from "./followup.js";
 import { checkRateLimit, checkDailyLimit } from "./rateLimit.js";
@@ -8,6 +9,7 @@ import { verifyClient } from "./attest.js";
 import { tryAcquire, release } from "./concurrency.js";
 import { isConfigured as isRedisConfigured } from "./redis.js";
 import { verifyAppStoreTransaction } from "./appStoreVerify.js";
+import { createJob, getJob, saveJob, newJobId, type AnalysisJob, type JobCharge } from "./jobs.js";
 import {
   checkDeepDecisionQuota,
   refundDeepDecisionQuota,
@@ -359,6 +361,15 @@ export async function handle(
     return json(400, { error: "invalid_json" });
   }
 
+  // A `continue` call looks nothing like a decision request -- just the ID of
+  // one already created below -- so it's checked for first and handled on
+  // its own path, with none of the charge/quota logic a *new* decision goes
+  // through (that already happened once, at creation).
+  const continuation = ContinueRequestSchema.safeParse(payload);
+  if (continuation.success) {
+    return handleContinue(analyse, continuation.data.jobId);
+  }
+
   const parsed = AnalysisRequestSchema.safeParse(payload);
   if (!parsed.success) {
     // The reason is deliberately coarse: an error body is not a schema oracle.
@@ -452,54 +463,246 @@ export async function handle(
     quotaInfo = { bucket: dailyBudget.bucket, used: decision.used, limit: decision.limit, resetsAt: decision.resetsAt };
   }
 
-  async function refundSpend(): Promise<void> {
-    if (deepQuotaInstallId) await refundDeepDecisionQuota(deepQuotaInstallId);
-    if (dailyQuota) await refundDailyQuota(dailyQuota.bucket, dailyQuota.installId);
-    if (freeSpentEstimate > 0) await refundGlobalFreeSpend(freeSpentEstimate);
-    if (absoluteSpentEstimate > 0) await refundAbsoluteSpend(absoluteSpentEstimate);
-  }
+  const charge: JobCharge = { deepQuotaInstallId, dailyQuota, freeSpentEstimate, absoluteSpentEstimate, quotaInfo };
+  const job = await createJob(newJobId(), parsed.data, charge);
 
   // A ceiling on how many analyses can be in flight at once, independent of
   // client identity — see concurrency.ts for why identity alone is not enough.
   const maxConcurrent = Number(process.env.DECIDE_MAX_CONCURRENT_ANALYSES ?? 5);
   if (!(await tryAcquire(maxConcurrent))) {
-    await refundSpend();
+    await refundJobCharge(job.charge);
     return json(503, { error: "server_busy" }, { "Retry-After": "2" });
   }
 
   try {
-    const result = await analyse(getClients(), parsed.data);
-    // A question-only round is not a delivered decision yet -- the user will
-    // call this endpoint again to continue it, and that call, not this one,
-    // is what should cost a unit of their daily/monthly allowance. Without
-    // this, a decision that takes several clarifying questions to resolve
-    // (now actively encouraged -- see the not_enough_to_decide rules in
-    // prompt.ts) could cost several units of a 5-a-day free bucket for what
-    // the user experiences as one decision. The real AI spend for this round
-    // is still charged (freeSpentEstimate/absoluteSpentEstimate are left
-    // alone) -- only the user-facing decision-count quota is refunded.
-    if (result.decisionStatus === "needs_one_question") {
-      if (deepQuotaInstallId) await refundDeepDecisionQuota(deepQuotaInstallId);
-      if (dailyQuota) {
-        await refundDailyQuota(dailyQuota.bucket, dailyQuota.installId);
-        if (quotaInfo) quotaInfo = { ...quotaInfo, used: Math.max(0, quotaInfo.used - 1) };
-      }
-    }
-    // quotaInfo is only ever set for a complexity/Pro-state dailyQuotaFor()
-    // actually governs -- "simple", and a Free "complex" decision, carry no
-    // quota field at all, rather than a misleading one.
-    return json(200, quotaInfo ? { ...result, quota: quotaInfo } : result);
-  } catch (error) {
-    // A failed attempt shouldn't cost a Free user real budget or a real
-    // month's decision -- only a delivered result should.
-    await refundSpend();
-    if (error instanceof AnalysisError) {
-      return json(error.status, { error: error.message });
-    }
-    return json(500, { error: "internal_error" });
+    await runJobAttempt(analyse, getClients(), job);
   } finally {
     await release();
   }
+  return respondForJob(job);
+}
+
+/**
+ * Wall-clock budget for one analyse() attempt inside a job, well under
+ * Vercel's 60s hard function-duration ceiling (vercel.json) -- 15s of margin
+ * for the checks, Redis round-trips and JSON work around it in both
+ * `handle()` and this file. Deliberately tighter than analyse()'s own
+ * internal PIPELINE_DEADLINE_MS (52s, see analyze.ts): the goal here isn't to
+ * let one attempt run as long as it's individually allowed to, it's to make
+ * sure this *invocation* always has time left to persist the job and respond
+ * cleanly, whatever analyse() itself is doing.
+ */
+function jobRaceDeadlineMs(): number {
+  // Overridable so tests can exercise the "still running" / retry paths
+  // without actually waiting out a near-60s race.
+  return Number(process.env.DECIDE_JOB_RACE_DEADLINE_MS ?? 45_000);
+}
+
+/** How many full analyse() attempts (each with its own fresh JOB_RACE_DEADLINE_MS,
+ * not a shrinking shared one) a job gets before it's reported as failed and
+ * refunded. Matters only when every attempt is either timing out or hitting a
+ * real upstream error -- the ordinary case is done on the very first one. */
+const MAX_JOB_ATTEMPTS = 4;
+
+const ContinueRequestSchema = z.object({ jobId: z.string().min(1).max(100) });
+
+interface RaceOutcome<T> {
+  finished: boolean;
+  value?: T;
+  error?: unknown;
+}
+
+/** Races `promise` against a plain timer rather than cancelling it -- none of
+ * the SDK calls inside analyse() support real cancellation, and even if they
+ * did, Vercel gives this invocation no way to guarantee cleanup finishes
+ * before the response goes out. The promise itself is always left to settle
+ * on its own; `runJobAttempt` below decides what to do with it either way. */
+function raceAttempt<T>(promise: Promise<T>, ms: number): Promise<RaceOutcome<T>> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve({ finished: false });
+    }, ms);
+    promise.then(
+      (value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve({ finished: true, value });
+      },
+      (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve({ finished: true, error });
+      }
+    );
+  });
+}
+
+async function refundJobCharge(charge: JobCharge): Promise<void> {
+  if (charge.deepQuotaInstallId) await refundDeepDecisionQuota(charge.deepQuotaInstallId);
+  if (charge.dailyQuota) await refundDailyQuota(charge.dailyQuota.bucket, charge.dailyQuota.installId);
+  if (charge.freeSpentEstimate > 0) await refundGlobalFreeSpend(charge.freeSpentEstimate);
+  if (charge.absoluteSpentEstimate > 0) await refundAbsoluteSpend(charge.absoluteSpentEstimate);
+}
+
+/** Mirrors handle()'s old inline needs_one_question adjustment: only the
+ * user-facing decision-count quota is given back, never freeSpentEstimate /
+ * absoluteSpentEstimate -- the real AI spend for this round already
+ * happened and is never refunded just because the decision isn't finished. */
+async function refundQuotaForNeedsQuestion(charge: JobCharge): Promise<void> {
+  if (charge.deepQuotaInstallId) await refundDeepDecisionQuota(charge.deepQuotaInstallId);
+  if (charge.dailyQuota) await refundDailyQuota(charge.dailyQuota.bucket, charge.dailyQuota.installId);
+}
+
+async function finishJobWithResult(job: AnalysisJob, result: WireResponse): Promise<void> {
+  if (job.status !== "running") return; // already finished via another path (e.g. a late background resolve)
+  job.status = "done";
+  job.result = result;
+  if (result.decisionStatus === "needs_one_question") {
+    await refundQuotaForNeedsQuestion(job.charge);
+    if (job.charge.quotaInfo) {
+      job.charge.quotaInfo = { ...job.charge.quotaInfo, used: Math.max(0, job.charge.quotaInfo.used - 1) };
+    }
+  }
+  await saveJob(job);
+}
+
+/** Only a genuinely transient upstream condition is worth another attempt --
+ * the same "upstream_unavailable" class analyze.ts already uses for a
+ * timeout or a 503/504 from the provider (see throwForUpstreamError). Every
+ * other AnalysisError (a rate limit, a refused/content-filtered response, an
+ * unparseable one) is deterministic: retrying it would just fail the same
+ * way again, slower, so it's reported immediately instead -- exactly as it
+ * was before this job model existed. */
+function isRetryableError(error: unknown): boolean {
+  return error instanceof AnalysisError && error.status === 503;
+}
+
+async function finishJobWithError(job: AnalysisJob, error: unknown): Promise<void> {
+  if (job.status !== "running") return;
+  if (isRetryableError(error) && job.attempts < MAX_JOB_ATTEMPTS) return; // the next `continue` call gets a fresh attempt
+  job.status = "failed";
+  if (error instanceof AnalysisError) {
+    job.errorMessage = error.message;
+    job.errorStatus = error.status;
+  } else {
+    job.errorMessage = "internal_error";
+    job.errorStatus = 500;
+  }
+  if (!job.refunded) {
+    job.refunded = true;
+    await refundJobCharge(job.charge);
+  }
+  await saveJob(job);
+}
+
+/**
+ * Runs exactly one analyse() attempt for `job`, racing it against
+ * JOB_RACE_DEADLINE_MS so this invocation always has time left to persist the
+ * outcome and respond -- never the open-ended wait that let a single slow
+ * upstream call blow past Vercel's 60s ceiling with no response at all (see
+ * analyze.ts's PIPELINE_DEADLINE_MS comment for how that actually happened).
+ * Leaves `job.status` as "running" when the race times out or a non-final
+ * error leaves attempts remaining: the caller (`handle()`, via
+ * `respondForJob`) reports that as `{ pending: true }`, and the next
+ * `continue` call -- whenever the client next makes one, including after the
+ * app was fully closed and reopened -- starts a brand new attempt with its
+ * own full budget rather than resuming mid-call, which nothing here could do
+ * safely anyway.
+ */
+async function runJobAttempt(
+  analyse: typeof defaultAnalyse,
+  clients: AnalysisClients,
+  job: AnalysisJob
+): Promise<void> {
+  job.attempts += 1;
+  await saveJob(job);
+
+  const attemptPromise = analyse(clients, job.request);
+  const race = await raceAttempt(attemptPromise, jobRaceDeadlineMs());
+
+  if (!race.finished) {
+    // The same in-flight call, left running -- never a second, separately
+    // billed attempt. Best-effort only: Vercel gives no guarantee this
+    // instance survives long enough to see it settle, so correctness never
+    // depends on it, only on the next `continue` call's own fresh attempt.
+    attemptPromise.then(
+      (value) => void finishJobWithResult(job, value),
+      (error) => void finishJobWithError(job, error)
+    );
+    return;
+  }
+
+  if (race.error !== undefined) {
+    await finishJobWithError(job, race.error);
+    return;
+  }
+
+  await finishJobWithResult(job, race.value as WireResponse);
+}
+
+/**
+ * quotaInfo is only ever set for a complexity/Pro-state dailyQuotaFor()
+ * actually governs -- "simple", and a Free "complex" decision, carry no
+ * quota field at all, rather than a misleading one.
+ */
+function respondForJob(job: AnalysisJob): HandlerResponse {
+  if (job.status === "done" && job.result) {
+    return json(200, job.charge.quotaInfo ? { ...job.result, quota: job.charge.quotaInfo } : job.result);
+  }
+  if (job.status === "failed") {
+    return json(job.errorStatus ?? 500, { error: job.errorMessage ?? "internal_error" });
+  }
+  return json(200, { jobId: job.id, pending: true });
+}
+
+/**
+ * The client's repeated check-in on a decision already created above -- no
+ * new charge, no new quota check, just either the stored terminal outcome or
+ * one more bounded attempt. The only path that can run arbitrarily long
+ * after the original request returned, including after the app was closed
+ * and reopened: `job` lives in Redis (jobs.ts), not in this invocation's
+ * memory, so none of that matters to it.
+ */
+async function handleContinue(analyse: typeof defaultAnalyse, jobId: string): Promise<HandlerResponse> {
+  const job = await getJob(jobId);
+  if (!job) {
+    return json(404, { error: "job_not_found" });
+  }
+  if (job.status !== "running") {
+    return respondForJob(job);
+  }
+  if (job.attempts >= MAX_JOB_ATTEMPTS) {
+    // Shouldn't normally be reachable -- finishJobWithError already marks the
+    // job "failed" once attempts run out -- but never leaves a job stuck
+    // "running" forever if it somehow is.
+    job.status = "failed";
+    job.errorMessage = "analysis_failed";
+    job.errorStatus = 503;
+    if (!job.refunded) {
+      job.refunded = true;
+      await refundJobCharge(job.charge);
+    }
+    await saveJob(job);
+    return respondForJob(job);
+  }
+
+  const maxConcurrent = Number(process.env.DECIDE_MAX_CONCURRENT_ANALYSES ?? 5);
+  if (!(await tryAcquire(maxConcurrent))) {
+    // The job itself hasn't failed -- just this one check-in found the server
+    // busy. No refund: the client simply polls again shortly.
+    return json(503, { error: "server_busy" }, { "Retry-After": "2" });
+  }
+  try {
+    await runJobAttempt(analyse, getClients(), job);
+  } finally {
+    await release();
+  }
+  return respondForJob(job);
 }
 
 function sanitizeInstallId(raw: string | undefined): string | null {
