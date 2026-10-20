@@ -266,28 +266,44 @@ struct ProfileView: View {
                 }
             } else {
                 VStack(alignment: .leading, spacing: RudderSpacing.s) {
-                    if environment.memory.isEmpty {
-                        EmptyStateView(
-                            title: "Nothing learned yet.",
-                            message: "After a few decisions, RUDDER may notice a pattern and ask whether to remember it.",
-                            systemImage: "brain"
+                    // One switch for the whole feature -- most people only ever
+                    // want memory on or off, not a per-fact decision every time.
+                    RudderCard {
+                        Toggle(
+                            "Decision Memory",
+                            isOn: Binding(
+                                get: { environment.isMemoryEnabled },
+                                set: { environment.setMemoryEnabled($0) }
+                            )
                         )
-                    } else {
-                        VStack(spacing: RudderSpacing.s) {
-                            ForEach(environment.memory) { entry in
-                                MemoryRow(entry: entry)
+                        .font(RudderFont.callout.weight(.medium))
+                        .toggleStyle(.switch)
+                    }
+
+                    if environment.isMemoryEnabled {
+                        if environment.memory.isEmpty {
+                            EmptyStateView(
+                                title: "Nothing learned yet.",
+                                message: "After a few decisions, RUDDER may notice a pattern and ask whether to remember it.",
+                                systemImage: "brain"
+                            )
+                        } else {
+                            VStack(spacing: RudderSpacing.s) {
+                                ForEach(environment.memory) { entry in
+                                    MemoryRow(entry: entry)
+                                }
                             }
                         }
+                        // A one-time, user-initiated scan across every decision
+                        // already made -- for someone who'd rather do this once
+                        // than wait for a candidate to surface one decision at a
+                        // time. Still only a proposal: nothing here writes
+                        // anything without the explicit "Remember" below.
+                        SecondaryButton(title: "Scan all decisions", systemImage: "magnifyingglass") {
+                            startMemorizeAllScan()
+                        }
+                        .disabled(environment.decisions.isEmpty)
                     }
-                    // A one-time, user-initiated scan across every decision
-                    // already made -- for someone who'd rather do this once
-                    // than wait for a candidate to surface one decision at a
-                    // time. Still only a proposal: nothing here writes
-                    // anything without the explicit "Remember" below.
-                    SecondaryButton(title: "Scan all decisions", systemImage: "magnifyingglass") {
-                        startMemorizeAllScan()
-                    }
-                    .disabled(environment.decisions.isEmpty)
                 }
             }
         }

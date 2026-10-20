@@ -81,7 +81,7 @@ struct DecisionDetailsView: View {
             DecisionFlowView(prompt: active.prompt)
         }
         .navigationDestination(isPresented: $showingAnalysis) {
-            AnalysisView(result: current.result)
+            AnalysisView(result: current.result, record: current)
         }
     }
 

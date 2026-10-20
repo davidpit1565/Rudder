@@ -53,6 +53,13 @@ final class AppEnvironment {
     /// A preference RUDDER would like to remember, waiting on the user's answer.
     private(set) var pendingMemoryCandidate: MemoryCandidate?
     private(set) var storageError: String?
+    /// One switch for the whole feature, not a per-fact decision -- the
+    /// per-entry "Use this" toggles below it stay for someone who wants to
+    /// drop a single learned fact, but most people only ever want memory on
+    /// or off entirely. Backed by UserDefaults rather than `persistence`
+    /// since it's a device setting, not data to sync or export.
+    private(set) var isMemoryEnabled: Bool
+    private static let memoryEnabledDefaultsKey = "rudder.isMemoryEnabled"
     /// Today's/this-month's usage across every quota the backend actually
     /// enforces (Backend/src/quota.ts), fetched read-only -- never computed
     /// from local decisions, which can't see another device's spend or
@@ -71,6 +78,11 @@ final class AppEnvironment {
         self.persistence = persistence
         self.subscriptions = subscriptions
         self.analytics = analytics
+        // Defaults to on: this only has any effect for a Pro subscriber, and
+        // Decision Memory has always been opt-in by consenting to each
+        // proposed fact -- this switch is one more layer on top of that,
+        // not instead of it.
+        self.isMemoryEnabled = UserDefaults.standard.object(forKey: Self.memoryEnabledDefaultsKey) as? Bool ?? true
         reload()
     }
 
@@ -175,10 +187,18 @@ final class AppEnvironment {
 
     // MARK: - Memory
 
+    func setMemoryEnabled(_ isEnabled: Bool) {
+        isMemoryEnabled = isEnabled
+        UserDefaults.standard.set(isEnabled, forKey: Self.memoryEnabledDefaultsKey)
+        if !isEnabled {
+            pendingMemoryCandidate = nil
+        }
+    }
+
     /// Looks for a preference worth proposing. Pro-only, and never automatic:
     /// the user is asked before anything is stored.
     func refreshMemoryCandidate() {
-        guard isPro else {
+        guard isPro, isMemoryEnabled else {
             pendingMemoryCandidate = nil
             return
         }
@@ -218,7 +238,7 @@ final class AppEnvironment {
     /// Still returns only candidates, never writes anything: the bulk
     /// "Remember" action below is the actual consent.
     func allMemoryCandidates() -> [MemoryCandidate] {
-        guard isPro else { return [] }
+        guard isPro, isMemoryEnabled else { return [] }
         return MemoryEngine.candidates(from: decisions, existing: memory, excludedKeys: declinedMemoryKeys)
     }
 
@@ -392,7 +412,10 @@ final class AppEnvironment {
         DecisionCoordinator(
             service: analysisService(),
             analytics: analytics,
-            memoryProvider: { [weak self] in self?.memory ?? [] }
+            memoryProvider: { [weak self] in
+                guard let self, self.isMemoryEnabled else { return [] }
+                return self.memory
+            }
         )
     }
 
